@@ -1,0 +1,14 @@
+language: go
+os: windows
+
+go:
+  - "1.12.5"
+
+before_install:
+  - go get -t -v ./...
+
+install:
+  - go build .
+
+#script:
+#  - go test -v -race -coverprofile=coverage.txt -covermode=atomic
