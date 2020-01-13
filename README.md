@@ -9,12 +9,12 @@
 
 ![GitHub language count](https://img.shields.io/github/languages/count/ttimt/Short_Cutteer?logo=go&style=for-the-badge)
 ![GitHub](https://img.shields.io/github/license/ttimt/Short_Cutteer?style=for-the-badge)
-![GitHub last commit](https://img.shields.io/github/last-commit/ttimt/Short_Cutteer?style=for-the-badge)
 
 ---
 
 ![GitHub issues](https://img.shields.io/github/issues-raw/ttimt/Short_Cutteer?style=for-the-badge)
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/ttimt/Short_Cutteer?style=for-the-badge)
+![GitHub last commit](https://img.shields.io/github/last-commit/ttimt/Short_Cutteer?style=for-the-badge)
 
 ---
 
@@ -37,6 +37,7 @@ To be filled ...
 [![Made with GO](https://forthebadge.com/images/badges/made-with-go.svg)](https://forthebadge.com)
 [![Build with <3](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com)
 
----
 
-[![DeepSource](https://static.deepsource.io/deepsource-badge-light.svg)](https://deepsource.io/gh/ttimt/Short_Cutteer/?ref=repository-badge)
+ Contact
+-
+[![Ask Me Anything !](https://img.shields.io/badge/Ask%20me-anything-1abc9c.svg?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/in/timothy0707/)
