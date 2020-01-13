@@ -12,7 +12,7 @@ import (
 var wg sync.WaitGroup
 var hhook HHOOK
 var keyDown bool
-yuk
+
 func receiveHook(ctx context.Context, ch chan *tagKBDLLHOOKSTRUCT) {
 	var fn HOOKPROC
 
