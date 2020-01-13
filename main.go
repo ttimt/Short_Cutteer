@@ -22,34 +22,39 @@ func receiveHook(ctx context.Context, ch chan *tagKBDLLHOOKSTRUCT) {
 			char := (*tagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
 
 			// Process your received key here
-			curChar := byte((*char).vkCode)
+			curChar := (*char).vkCode
 			fmt.Println("Current character:", curChar)
 
 			if curChar == '9' && !keyDown {
 				shiftKeyState := GetKeyState(VK_SHIFT) >> 15
 				fmt.Println("shift state", shiftKeyState)
-				if shiftKeyState == 1 {
+				if shiftKeyState == -1 {
 					keyDown = true
 					var input tagINPUT
 					input.inputType = 1
-					input.ki.WVk = '0'
+					input.ki.WVk = VK_ZERO
 
 					var input2 tagINPUT
 					input2.inputType = 1
-					input2.ki.WVk = '9'
+					input2.ki.WVk = VK_NINE
 
 					var input5 tagINPUT
 					input5.inputType = 1
-					input5.ki.WVk = 0x25
+					input5.ki.WVk = VK_LEFT
+
+					var input6 tagINPUT
+					input6.inputType = 1
+					input6.ki.WVk = VK_SHIFT
+					input6.ki.DwFlags = KEYEVENTF_KEYUP
 
 					allInput := make([]tagINPUT, 0)
 
-					allInput = append(allInput, input2, input, input5)
+					allInput = append(allInput, input2, input, input6, input5)
 
-					SendInput(uint(len(allInput)), LPINPUT(allInput[0]), int(unsafe.Sizeof(allInput[0])))
-
+					SendInput(uint(len(allInput)), (*LPINPUT)(&allInput[0]), int(unsafe.Sizeof(allInput[0])))
 					keyDown = false
 
+					CallNextHookEx(0, code, wParam, lParam)
 					return -1
 				}
 			}
