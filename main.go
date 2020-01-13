@@ -18,8 +18,10 @@ func receiveHook(ctx context.Context, ch chan *tagKBDLLHOOKSTRUCT) {
 
 	fn = func(code int, wParam WPARAM, lParam LPARAM) LRESULT {
 		if wParam == 256 {
-			// Process your received key here
+			// Retrieve the KBDLLHOOKSTRUCT
 			char := (*tagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
+
+			// Process your received key here
 			curChar := byte((*char).vkCode)
 			fmt.Println("Current character:", curChar)
 
