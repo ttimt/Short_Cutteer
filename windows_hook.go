@@ -20,7 +20,7 @@ type (
 	WPARAM    uintptr
 	LPINPUT   tagINPUT
 
-	// Callback function after SendMessage function is called (Keyboard input received)
+	// HOOKPROC Callback function after SendMessage function is called (Keyboard input received)
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nc-winuser-hookproc
 	//
 	// LPARAM is a pointer to a KBDLLHOOKSTRUCT struct :
@@ -46,7 +46,7 @@ type tagINPUT struct {
 	padding   uint64
 }
 
-// Simulated keyboard event
+// KEYBDINPUT Simulated keyboard event
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput
 type KEYBDINPUT struct {
 	WVk         uint16
@@ -94,13 +94,13 @@ const (
 	VK_OEM_6    = 0xDD // ']}' key
 	VK_OEM_7    = 0xDE // 'single-quote/double-quote' key
 
-	// Types of input event:
+	// INPUT_MOUSE Types of input event:
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-input#members
 	INPUT_MOUSE    = 0
 	INPUT_KEYBOARD = 1
 	INPUT_HARDWARE = 2
 
-	// Keystroke for dwFlags in KEYBDINPUT
+	// KEYEVENTF_EXTENDEDKEY Keystroke for dwFlags in KEYBDINPUT
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput#members
 	KEYEVENTF_EXTENDEDKEY = 0x0001
 	KEYEVENTF_KEYUP       = 0x0002
@@ -121,7 +121,7 @@ var (
 	winDLLUser32_GetKeyState             = winDLLUser32.NewProc("GetKeyState")
 )
 
-// LoadDLLs loads all required DLLs and panic if error(s) occured
+// LoadDLLs loads all required DLLs and panic if error(s) occurred
 func LoadDLLs() {
 	err := winDLLUser32.Load()
 	if err != nil {
@@ -129,7 +129,7 @@ func LoadDLLs() {
 	}
 }
 
-// Pass the hook information to the next hook procedure
+// CallNextHookEx Pass the hook information to the next hook procedure
 // A hook procedure can call this function either before or after processing the hook information
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-callnexthookex
 func CallNextHookEx(hhk HHOOK, nCode int, wParam WPARAM, lParam LPARAM) LRESULT {
@@ -138,7 +138,7 @@ func CallNextHookEx(hhk HHOOK, nCode int, wParam WPARAM, lParam LPARAM) LRESULT 
 	return LRESULT(result)
 }
 
-// Install hook procedure into a hhook chain
+// SetWindowsHookExW Install hook procedure into a hhook chain
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexw
 func SetWindowsHookExW(idHook int, lpfn HOOKPROC, hmod HINSTANCE, dwThreadID DWORD) HHOOK {
 	result, _, _ := winDLLUser32_ProcSetWindowsHookExW.Call(uintptr(idHook), windows.NewCallback(lpfn), uintptr(hmod), uintptr(dwThreadID))
@@ -146,7 +146,7 @@ func SetWindowsHookExW(idHook int, lpfn HOOKPROC, hmod HINSTANCE, dwThreadID DWO
 	return HHOOK(result)
 }
 
-// Remove a hook procedure installed in a hook chain by the SetWindowsHookEx function
+// UnhookWindowsHookEx Remove a hook procedure installed in a hook chain by the SetWindowsHookEx function
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unhookwindowshookex
 func UnhookWindowsHookEx(hhk HHOOK) bool {
 	result, _, err := winDLLUser32_ProcUnhookWindowsHookEx.Call(uintptr(hhk))
@@ -159,7 +159,7 @@ func UnhookWindowsHookEx(hhk HHOOK) bool {
 	return true
 }
 
-// Retrieves a message
+// GetMessageW Retrieves a message
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
 func GetMessageW(lpMsg LPMSG, hWnd HWND, wMsgFilterMin uint, wMsgFilterMax uint) bool {
 	res, _, err := winDLLUser32_GetMessageW.Call(uintptr(lpMsg), uintptr(hWnd), uintptr(wMsgFilterMin), uintptr(wMsgFilterMax))
@@ -172,7 +172,7 @@ func GetMessageW(lpMsg LPMSG, hWnd HWND, wMsgFilterMin uint, wMsgFilterMax uint)
 	return true
 }
 
-// Simulate keyboard inputs to the operating system
+// SendInput Simulate keyboard inputs to the operating system
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput
 func SendInput(cInputs uint, pInputs *LPINPUT, cbSize int) uint {
 
@@ -186,7 +186,7 @@ func SendInput(cInputs uint, pInputs *LPINPUT, cbSize int) uint {
 	return uint(result)
 }
 
-// Retrieves the status of the specified virtual key
+// GetKeyState Retrieves the status of the specified virtual key
 // The status specifies whether the key is up, down or toggled (on, off - alternating each time the key is pressed)
 //
 // Returned bits = 16 bits
