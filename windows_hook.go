@@ -63,24 +63,36 @@ const (
 
 	// Virtual key codes:
 	// https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-	VK_BACK    = 0x08
-	VK_TAB     = 0x09
-	VK_RETURN  = 0x0D // Enter key
-	VK_SHIFT   = 0x10
-	VK_CONTROL = 0x11
-	VK_MENU    = 0x12
-	VK_CAPITAL = 0x14
-	VK_SPACE   = 0x20
-	VK_END     = 0x23
-	VK_HOME    = 0x24
-	VK_LEFT    = 0x25
-	VK_UP      = 0x26
-	VK_RIGHT   = 0x27
-	VK_DOWN    = 0x28
-	VK_OEM_1   = 0xBA // ';:' key
-	VK_OEM_4   = 0xDB // '[{' key
-	VK_OEM_6   = 0xDD // ']}' key
-	VK_OEM_7   = 0xDE // 'single-quote/double-quote' key
+	VK_BACK     = 0x08
+	VK_TAB      = 0x09
+	VK_RETURN   = 0x0D // Enter key
+	VK_SHIFT    = 0x10
+	VK_CONTROL  = 0x11
+	VK_MENU     = 0x12
+	VK_CAPITAL  = 0x14
+	VK_SPACE    = 0x20
+	VK_END      = 0x23
+	VK_HOME     = 0x24
+	VK_LEFT     = 0x25
+	VK_UP       = 0x26
+	VK_RIGHT    = 0x27
+	VK_DOWN     = 0x28
+	VK_ZERO     = 0x30
+	VK_ONE      = 0x31
+	VK_TWO      = 0x32
+	VK_THREE    = 0x33
+	VK_FOUR     = 0x34
+	VK_FIVE     = 0x35
+	VK_SIX      = 0x36
+	VK_SEVEN    = 0x37
+	VK_EIGHT    = 0x38
+	VK_NINE     = 0x39
+	VK_LCONTROL = 0xA2
+	VK_RCONTROL = 0xA3
+	VK_OEM_1    = 0xBA // ';:' key
+	VK_OEM_4    = 0xDB // '[{' key
+	VK_OEM_6    = 0xDD // ']}' key
+	VK_OEM_7    = 0xDE // 'single-quote/double-quote' key
 
 	// Types of input event:
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-input#members
@@ -88,7 +100,7 @@ const (
 	INPUT_KEYBOARD = 1
 	INPUT_HARDWARE = 2
 
-	// Keystroke
+	// Keystroke for dwFlags in KEYBDINPUT
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput#members
 	KEYEVENTF_EXTENDEDKEY = 0x0001
 	KEYEVENTF_KEYUP       = 0x0002
@@ -162,9 +174,9 @@ func GetMessageW(lpMsg LPMSG, hWnd HWND, wMsgFilterMin uint, wMsgFilterMax uint)
 
 // Simulate keyboard inputs to the operating system
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput
-func SendInput(cInputs uint, pInputs LPINPUT, cbSize int) uint {
+func SendInput(cInputs uint, pInputs *LPINPUT, cbSize int) uint {
 
-	result, _, err := winDLLUser32_SendInput.Call(uintptr(cInputs), uintptr(unsafe.Pointer(&pInputs)), uintptr(cbSize))
+	result, _, err := winDLLUser32_SendInput.Call(uintptr(cInputs), uintptr(unsafe.Pointer(pInputs)), uintptr(cbSize))
 
 	if result == 0 {
 		log.Println("SendInput error:", err)
