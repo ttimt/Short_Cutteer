@@ -4,13 +4,10 @@
 [![Build Status](https://img.shields.io/travis/com/ttimt/Short_Cutteer?logo=travis&style=for-the-badge)](https://travis-ci.com/ttimt/Short_Cutteer)
 [![CodeFactor](https://img.shields.io/codefactor/grade/github/ttimt/Short_Cutteer?logo=codefactor&style=for-the-badge)](https://www.codefactor.io/repository/github/ttimt/short_cutteer)
 [![Maintainability](https://img.shields.io/codeclimate/maintainability-percentage/ttimt/Short_Cutteer?logo=code-climate&style=for-the-badge)](https://codeclimate.com/github/ttimt/Short_Cutteer/maintainability)
-[![Code Climate technical debt](https://img.shields.io/codeclimate/tech-debt/ttimt/Short_Cutteer?style=for-the-badge&logo=code-climate)](https://codeclimate.com/github/ttimt/Short_Cutteer/maintainability)
 
 ![GitHub issues](https://img.shields.io/github/issues-raw/ttimt/Short_Cutteer?style=for-the-badge)
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/ttimt/Short_Cutteer?style=for-the-badge)
-![GitHub last commit](https://img.shields.io/github/last-commit/ttimt/Short_Cutteer?style=for-the-badge)
 ![GitHub language count](https://img.shields.io/github/languages/count/ttimt/Short_Cutteer?logo=go&style=for-the-badge)
-
 
 
 Content
