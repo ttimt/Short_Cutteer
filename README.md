@@ -32,7 +32,7 @@ Contact
 License
 -
 ![GitHub](https://img.shields.io/github/license/ttimt/Short_Cutteer?style=for-the-badge)
-<br><br><br>
+<br>
 
 ---
 [![Fuck it. Ship it](https://forthebadge.com/images/badges/fuck-it-ship-it.svg)](https://forthebadge.com)
