@@ -180,6 +180,8 @@ func SendInput(cInputs uint, pInputs LPINPUT, cbSize int) uint {
 // Returned bits = 16 bits
 // If high-order bit is 1, the key is down, otherwise it is up
 // If low-order bit is 1, the key is toggled on, otherwise the key is off
+//
+// Since SHORT is int16, a negative value will indicates high-order bit is 1
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getkeystate
 func GetKeyState(nVirtKey int) SHORT {
 	result, _, _ := winDLLUser32_GetKeyState.Call(uintptr(nVirtKey))
