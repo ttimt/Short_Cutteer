@@ -63,36 +63,38 @@ const (
 
 	// Virtual key codes:
 	// https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-	VK_BACK     = 0x08
-	VK_TAB      = 0x09
-	VK_RETURN   = 0x0D // Enter key
-	VK_SHIFT    = 0x10
-	VK_CONTROL  = 0x11
-	VK_MENU     = 0x12
-	VK_CAPITAL  = 0x14
-	VK_SPACE    = 0x20
-	VK_END      = 0x23
-	VK_HOME     = 0x24
-	VK_LEFT     = 0x25
-	VK_UP       = 0x26
-	VK_RIGHT    = 0x27
-	VK_DOWN     = 0x28
-	VK_ZERO     = 0x30
-	VK_ONE      = 0x31
-	VK_TWO      = 0x32
-	VK_THREE    = 0x33
-	VK_FOUR     = 0x34
-	VK_FIVE     = 0x35
-	VK_SIX      = 0x36
-	VK_SEVEN    = 0x37
-	VK_EIGHT    = 0x38
-	VK_NINE     = 0x39
-	VK_LCONTROL = 0xA2
-	VK_RCONTROL = 0xA3
-	VK_OEM_1    = 0xBA // ';:' key
-	VK_OEM_4    = 0xDB // '[{' key
-	VK_OEM_6    = 0xDD // ']}' key
-	VK_OEM_7    = 0xDE // 'single-quote/double-quote' key
+	VK_BACK       = 0x08
+	VK_TAB        = 0x09
+	VK_RETURN     = 0x0D // Enter key
+	VK_SHIFT      = 0x10
+	VK_CONTROL    = 0x11
+	VK_MENU       = 0x12
+	VK_CAPITAL    = 0x14
+	VK_SPACE      = 0x20
+	VK_END        = 0x23
+	VK_HOME       = 0x24
+	VK_LEFT       = 0x25
+	VK_UP         = 0x26
+	VK_RIGHT      = 0x27
+	VK_DOWN       = 0x28
+	VK_ZERO       = 0x30
+	VK_ONE        = 0x31
+	VK_TWO        = 0x32
+	VK_THREE      = 0x33
+	VK_FOUR       = 0x34
+	VK_FIVE       = 0x35
+	VK_SIX        = 0x36
+	VK_SEVEN      = 0x37
+	VK_EIGHT      = 0x38
+	VK_NINE       = 0x39
+	VK_LCONTROL   = 0xA2
+	VK_RCONTROL   = 0xA3
+	VK_OEM_1      = 0xBA // ';:' key
+	VK_OEM_PERIOD = 0xBE // '.' key
+	VK_OEM_2      = 0xBF // '/?' key
+	VK_OEM_4      = 0xDB // '[{' key
+	VK_OEM_6      = 0xDD // ']}' key
+	VK_OEM_7      = 0xDE // 'single-quote/double-quote' key
 
 	// INPUT_MOUSE Types of input event:
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-input#members
@@ -119,10 +121,13 @@ var (
 	winDLLUser32_GetMessageW             = winDLLUser32.NewProc("GetMessageW")
 	winDLLUser32_SendInput               = winDLLUser32.NewProc("SendInput")
 	winDLLUser32_GetKeyState             = winDLLUser32.NewProc("GetKeyState")
+	winDLLUser32_GetForegroundWindow     = winDLLUser32.NewProc("GetForegroundWindow")
+	winDLLUser32_SendMessage             = winDLLUser32.NewProc("SendMessage")
 )
 
 // LoadDLLs loads all required DLLs and panic if error(s) occurred
 func LoadDLLs() {
+	// Load user32.dll
 	err := winDLLUser32.Load()
 	if err != nil {
 		panic("LoadDLL error" + err.Error())
@@ -199,4 +204,20 @@ func GetKeyState(nVirtKey int) SHORT {
 	result, _, _ := winDLLUser32_GetKeyState.Call(uintptr(nVirtKey))
 
 	return SHORT(result)
+}
+
+func GetForegroundWindow() HWND {
+	result, _, err := winDLLUser32_GetForegroundWindow.Call()
+
+	if result == 0 {
+		log.Println("GetForegroundWindow error:", err)
+	}
+
+	return HWND(result)
+}
+
+func SendMessage(hWnd HWND, Msg uint, wParam WPARAM, lParam LPARAM) LRESULT {
+	result, _, _ := winDLLUser32_SendMessage.Call(uintptr(hWnd), uintptr(Msg), uintptr(wParam), uintptr(lParam))
+
+	return LRESULT(result)
 }
