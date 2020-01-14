@@ -1,49 +1,48 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"unsafe"
 )
 
-var wg sync.WaitGroup
 var hhook HHOOK
 var keyDown bool
+var isProcessInterrupted bool
+var currentKeyStrokeSignal = make(chan rune)
 
-func receiveHook(ctx context.Context, ch chan *tagKBDLLHOOKSTRUCT) {
-	var fn HOOKPROC
-
-	fn = func(code int, wParam WPARAM, lParam LPARAM) LRESULT {
+func receiveHook() {
+	// Declare a keyboard hook callback function (type HOOKPROC)
+	hookCallback := func(code int, wParam WPARAM, lParam LPARAM) LRESULT {
 		if wParam == 256 {
 			// Retrieve the KBDLLHOOKSTRUCT
-			char := (*tagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
+			keyboardHookData := (*tagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
+
+			// Retrieve current keystroke from keyboard hook struct's vkCode
+			currentKeystroke := (*keyboardHookData).vkCode
 
 			// Process your received key here
-			curChar := (*char).vkCode
-			fmt.Println("Current character:", curChar)
-
-			if curChar == '9' && !keyDown {
+			if currentKeystroke == VK_NINE && !keyDown {
 				shiftKeyState := GetKeyState(VK_SHIFT) >> 15
-				fmt.Println("shift state", shiftKeyState)
+
 				if shiftKeyState == -1 {
 					keyDown = true
 					var input tagINPUT
-					input.inputType = 1
+					input.inputType = INPUT_KEYBOARD
 					input.ki.WVk = VK_ZERO
 
 					var input2 tagINPUT
-					input2.inputType = 1
+					input2.inputType = INPUT_KEYBOARD
 					input2.ki.WVk = VK_NINE
 
 					var input5 tagINPUT
-					input5.inputType = 1
+					input5.inputType = INPUT_KEYBOARD
 					input5.ki.WVk = VK_LEFT
 
 					var input6 tagINPUT
-					input6.inputType = 1
+					input6.inputType = INPUT_KEYBOARD
 					input6.ki.WVk = VK_SHIFT
 					input6.ki.DwFlags = KEYEVENTF_KEYUP
 
@@ -54,61 +53,60 @@ func receiveHook(ctx context.Context, ch chan *tagKBDLLHOOKSTRUCT) {
 					SendInput(uint(len(allInput)), (*LPINPUT)(&allInput[0]), int(unsafe.Sizeof(allInput[0])))
 					keyDown = false
 
+					// Call CallNextHookEx to allow other applications using Windows hook to process the keystroke as well
 					CallNextHookEx(0, code, wParam, lParam)
+
+					//
 					return -1
 				}
 			}
 
-			ch <- char
+			// Send the keystroke to be printed
+			currentKeyStrokeSignal <- rune(currentKeystroke)
 		}
 
+		// Return CallNextHookEx result to allow keystroke to be displayed on user screen
 		return CallNextHookEx(0, code, wParam, lParam)
 	}
 
-	go func() {
-		hhook = SetWindowsHookExW(WH_KEYBOARD_LL, fn, 0, 0)
-		if hhook == 0 {
-			panic("Failed to set windows hook")
-		}
+	// Install a Windows hook that listen to keyboard input
+	hhook = SetWindowsHookExW(WH_KEYBOARD_LL, hookCallback, 0, 0)
+	if hhook == 0 {
+		panic("Failed to set Windows hook")
+	}
 
-		GetMessageW(0, 0, 0, 0)
-	}()
-
-	<-ctx.Done()
+	// Start retrieving message from the hook
+	if !GetMessageW(0, 0, 0, 0) {
+		panic("Failed to get message")
+	}
 }
 
 func main() {
-	fmt.Println("Start")
+	log.Println("Start")
 
 	// Load user32.dll
 	LoadDLLs()
 
-	var isInterrupted bool
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	ch := make(chan *tagKBDLLHOOKSTRUCT, 1)
-	ctx, cancel := context.WithCancel(context.Background())
+	// Setup process interrupt signal
+	processInterruptSignal := make(chan os.Signal)
+	signal.Notify(processInterruptSignal, os.Interrupt)
 
-	wg.Add(1)
-	go func() {
-		receiveHook(ctx, ch)
-		wg.Done()
-	}()
+	// Setup hook annd receive message
+	go receiveHook()
 
+	// Detect process interrupt or keystroke input
 	for {
-		if isInterrupted {
-			cancel()
+		// Unhook Windows keyboard and break the loop if process is interrupted
+		if isProcessInterrupted {
+			UnhookWindowsHookEx(hhook)
 			break
 		}
 
 		select {
-		case <-signalChan:
-			isInterrupted = true
-		case c := <-ch:
-			fmt.Printf("Char: %q\n", byte((*c).vkCode))
+		case <-processInterruptSignal:
+			isProcessInterrupted = true
+		case c := <-currentKeyStrokeSignal:
+			fmt.Printf("Current keystroke: %q\n", c)
 		}
 	}
-
-	wg.Wait()
-	UnhookWindowsHookEx(hhook)
 }
