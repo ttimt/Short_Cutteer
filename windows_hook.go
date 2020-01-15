@@ -206,6 +206,8 @@ func GetKeyState(nVirtKey int) SHORT {
 	return SHORT(result)
 }
 
+// Retrieve a handle to the user active foreground window
+// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow
 func GetForegroundWindow() HWND {
 	result, _, err := winDLLUser32_GetForegroundWindow.Call()
 
@@ -216,6 +218,9 @@ func GetForegroundWindow() HWND {
 	return HWND(result)
 }
 
+// Send the specified message to a window.
+// The method does not return until the window procedure processed the message
+// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendmessage
 func SendMessage(hWnd HWND, Msg uint, wParam WPARAM, lParam LPARAM) LRESULT {
 	result, _, _ := winDLLUser32_SendMessage.Call(uintptr(hWnd), uintptr(Msg), uintptr(wParam), uintptr(lParam))
 

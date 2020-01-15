@@ -20,8 +20,9 @@ var commandReady bool
 func receiveHook() {
 	// Declare a keyboard hook callback function (type HOOKPROC)
 	hookCallback := func(code int, wParam WPARAM, lParam LPARAM) LRESULT {
+		// If keystroke is pressed down
 		if wParam == 256 {
-			// Retrieve the KBDLLHOOKSTRUCT
+			// Retrieve the keyboard hook struct
 			keyboardHookData := (*tagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
 
 			// Retrieve current keystroke from keyboard hook struct's vkCode
@@ -32,7 +33,9 @@ func receiveHook() {
 			case currentKeyStrokeSignal <- currentKeystroke:
 
 			default:
-				// Skip
+				// Skip if the channel currentKeyStrokeSignal is busy
+				// as it means that the keystroke is sent from the processHook
+				// We want to ignore keystrokes that we sent ourself
 			}
 		}
 
@@ -112,43 +115,6 @@ func processHook() {
 		// If brackets or quotes, just can copy text (mouse + keyboard to detect there is text selected), copy, left bracket/quote, space, paste, space, right bracket/quote
 		// If 'shortcut key', copy and format and paste
 	}
-
-	// if currentKeystroke == VK_NINE && !keyDown {
-	// 	shiftKeyState := GetKeyState(VK_SHIFT) >> 15
-	//
-	// 	if shiftKeyState == -1 {
-	// 		keyDown = true
-	// 		var input tagINPUT
-	// 		input.inputType = INPUT_KEYBOARD
-	// 		input.ki.WVk = VK_ZERO
-	//
-	// 		var input2 tagINPUT
-	// 		input2.inputType = INPUT_KEYBOARD
-	// 		input2.ki.WVk = VK_NINE
-	//
-	// 		var input5 tagINPUT
-	// 		input5.inputType = INPUT_KEYBOARD
-	// 		input5.ki.WVk = VK_LEFT
-	//
-	// 		var input6 tagINPUT
-	// 		input6.inputType = INPUT_KEYBOARD
-	// 		input6.ki.WVk = VK_SHIFT
-	// 		input6.ki.DwFlags = KEYEVENTF_KEYUP
-	//
-	// 		allInput := make([]tagINPUT, 0)
-	//
-	// 		allInput = append(allInput, input2, input, input6, input5)
-	//
-	// 		SendInput(uint(len(allInput)), (*LPINPUT)(&allInput[0]), int(unsafe.Sizeof(allInput[0])))
-	// 		keyDown = false
-	//
-	// 		// Call CallNextHookEx to allow other applications using Windows hook to process the keystroke as well
-	// 		CallNextHookEx(0, code, wParam, lParam)
-	//
-	// 		//
-	// 		return -1
-	// 	}
-	// }
 }
 
 func defineCommands() {
@@ -238,14 +204,8 @@ func createKeyboardTagInputs(str string) []tagINPUT {
 			tagInputs = append(tagInputs, key)
 
 		default:
-			// key := tagINPUT{
-			// 	inputType: INPUT_KEYBOARD,
-			// 	ki: KEYBDINPUT{
-			// 		WVk: uint16(v),
-			// 	},
-			// }
-			//
-			// tagInputs = append(tagInputs, key)
+			// Don't process key if not specified above
+			// Or keys like backspace, delete, and weird symbols will be added to the buffer
 		} // END switch
 	}
 
