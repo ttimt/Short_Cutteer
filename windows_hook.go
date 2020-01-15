@@ -108,6 +108,12 @@ const (
 	KEYEVENTF_KEYUP       = 0x0002
 	KEYEVENTF_SCANCODE    = 0x0008
 	KEYEVENTF_UNICODE     = 0x0004
+
+	// Window Messages: Code to get and send messages between applications
+	// https://docs.microsoft.com/en-us/windows/win32/winmsg/window-messages
+	WM_SETTEXT       = 0x000C
+	WM_GETTEXT       = 0x000D
+	WM_GETTEXTLENGTH = 0x000E
 )
 
 var (
@@ -122,7 +128,7 @@ var (
 	winDLLUser32_SendInput               = winDLLUser32.NewProc("SendInput")
 	winDLLUser32_GetKeyState             = winDLLUser32.NewProc("GetKeyState")
 	winDLLUser32_GetForegroundWindow     = winDLLUser32.NewProc("GetForegroundWindow")
-	winDLLUser32_SendMessage             = winDLLUser32.NewProc("SendMessage")
+	winDLLUser32_SendMessage             = winDLLUser32.NewProc("SendMessageW")
 )
 
 // LoadDLLs loads all required DLLs and panic if error(s) occurred
@@ -221,8 +227,9 @@ func GetForegroundWindow() HWND {
 // Send the specified message to a window.
 // The method does not return until the window procedure processed the message
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendmessage
-func SendMessage(hWnd HWND, Msg uint, wParam WPARAM, lParam LPARAM) LRESULT {
-	result, _, _ := winDLLUser32_SendMessage.Call(uintptr(hWnd), uintptr(Msg), uintptr(wParam), uintptr(lParam))
+func SendMessage(hWnd HWND, Msg uint, wParam WPARAM, lParam uintptr) LRESULT {
+	result, _, err := winDLLUser32_SendMessage.Call(uintptr(hWnd), uintptr(Msg), uintptr(wParam), uintptr(lParam))
 
+	log.Println("Error", err)
 	return LRESULT(result)
 }

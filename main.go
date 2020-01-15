@@ -66,7 +66,7 @@ func processHook() {
 
 		// Process keystroke
 		fmt.Printf("Current key: %d\n", currentKeyStroke)
-
+		// TestSendMessage()
 		if commandReady && (currentKeyStroke == VK_SPACE || currentKeyStroke == VK_TAB) {
 			fmt.Println("Command ready in", uint16(userCommands[bufferCommand][0]))
 			switch currentKeyStroke {
@@ -210,6 +210,22 @@ func createKeyboardTagInputs(str string) []tagINPUT {
 	}
 
 	return tagInputs
+}
+
+func TestSendMessage() {
+	handle := GetForegroundWindow()
+	titleSize := SendMessage(handle, WM_GETTEXTLENGTH, 0, 0)
+
+	if titleSize == 0 {
+		log.Println("Empty title")
+	} else {
+		title := make([]byte, titleSize+1)
+
+		log.Println("Sending message", len(title))
+		SendMessage(handle, WM_GETTEXT, WPARAM(len(title)), (uintptr(unsafe.Pointer(&title))))
+		log.Println("Doneending message", title)
+
+	}
 }
 
 func main() {
