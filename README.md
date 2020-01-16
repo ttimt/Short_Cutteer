@@ -11,6 +11,8 @@
 
 **`Note: Only works on Windows`**
 
+**`Note: And only tested on US keyboard`**
+
 To be filled ...
 
 To be filled ...
