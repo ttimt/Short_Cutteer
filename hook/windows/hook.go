@@ -1,7 +1,6 @@
-package hook
+package windows
 
 import (
-	"log"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -20,7 +19,7 @@ type (
 	WPARAM    uintptr
 	LPINPUT   TagINPUT
 
-	// HOOKPROC Callback function after SendMessage function is called (Keyboard input received)
+	// HOOKPROC Callback function after SendMessageW function is called (Keyboard input received)
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nc-winuser-hookproc
 	//
 	// LPARAM is a pointer to a KBDLLHOOKSTRUCT struct :
@@ -178,73 +177,61 @@ var (
 	winDLLUser32_SendInput               = winDLLUser32.NewProc("SendInput")
 	winDLLUser32_GetKeyState             = winDLLUser32.NewProc("GetKeyState")
 	winDLLUser32_GetForegroundWindow     = winDLLUser32.NewProc("GetForegroundWindow")
-	winDLLUser32_SendMessage             = winDLLUser32.NewProc("SendMessageW")
+	winDLLUser32_SendMessageW            = winDLLUser32.NewProc("SendMessageW")
 )
 
-// LoadDLLs loads all required DLLs and panic if error(s) occurred
-func LoadDLLs() {
+// LoadDLLs loads all required DLLs and return if error(s) occurred
+func LoadDLLs() error {
 	// Load user32.dll
 	err := winDLLUser32.Load()
-	if err != nil {
-		panic("LoadDLL error" + err.Error())
-	}
+
+	return err
 }
 
 // CallNextHookEx Pass the hook information to the next hook procedure
 // A hook procedure can call this function either before or after processing the hook information
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-callnexthookex
-func CallNextHookEx(hhk HHOOK, nCode int, wParam WPARAM, lParam LPARAM) LRESULT {
-	result, _, _ := winDLLUser32_ProcCallNextHookEx.Call(uintptr(hhk), uintptr(nCode), uintptr(wParam), uintptr(lParam))
+func CallNextHookEx(hhk HHOOK, nCode int, wParam WPARAM, lParam LPARAM) (LRESULT, error) {
+	result, _, err := winDLLUser32_ProcCallNextHookEx.Call(uintptr(hhk), uintptr(nCode), uintptr(wParam), uintptr(lParam))
 
-	return LRESULT(result)
+	return LRESULT(result), err
 }
 
 // SetWindowsHookExW Install hook procedure into a hhook chain
+// Result is null if error
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexw
-func SetWindowsHookExW(idHook int, lpfn HOOKPROC, hmod HINSTANCE, dwThreadID DWORD) HHOOK {
-	result, _, _ := winDLLUser32_ProcSetWindowsHookExW.Call(uintptr(idHook), windows.NewCallback(lpfn), uintptr(hmod), uintptr(dwThreadID))
+func SetWindowsHookExW(idHook int, lpfn HOOKPROC, hmod HINSTANCE, dwThreadID DWORD) (HHOOK, error) {
+	result, _, err := winDLLUser32_ProcSetWindowsHookExW.Call(uintptr(idHook), windows.NewCallback(lpfn), uintptr(hmod), uintptr(dwThreadID))
 
-	return HHOOK(result)
+	return HHOOK(result), err
 }
 
 // UnhookWindowsHookEx Remove a hook procedure installed in a hook chain by the SetWindowsHookEx function
+// Result is zero if error
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unhookwindowshookex
-func UnhookWindowsHookEx(hhk HHOOK) bool {
+func UnhookWindowsHookEx(hhk HHOOK) (bool, error) {
 	result, _, err := winDLLUser32_ProcUnhookWindowsHookEx.Call(uintptr(hhk))
 
-	if result == 0 {
-		log.Println("UnhookWindowsHookEx error:", err)
-		return false
-	}
-
-	return true
+	return result != 0, err
 }
 
 // GetMessageW Retrieves a message
+// Result is -1 if error
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
-func GetMessageW(lpMsg LPMSG, hWnd HWND, wMsgFilterMin uint, wMsgFilterMax uint) bool {
-	res, _, err := winDLLUser32_GetMessageW.Call(uintptr(lpMsg), uintptr(hWnd), uintptr(wMsgFilterMin), uintptr(wMsgFilterMax))
+func GetMessageW(lpMsg LPMSG, hWnd HWND, wMsgFilterMin uint, wMsgFilterMax uint) (bool, error) {
+	result, _, err := winDLLUser32_GetMessageW.Call(uintptr(lpMsg), uintptr(hWnd), uintptr(wMsgFilterMin), uintptr(wMsgFilterMax))
 
-	if res == 0 {
-		log.Println("GetMessageW error:", err)
-		return false
-	}
-
-	return true
+	return result != -1, err
 }
 
 // SendInput Simulate keyboard inputs to the operating system
+// Result is zero if error
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput
-func SendInput(cInputs uint, pInputs *LPINPUT, cbSize int) uint {
+func SendInput(cInputs uint, pInputs *LPINPUT, cbSize int) (uint, error) {
 
 	result, _, err := winDLLUser32_SendInput.Call(uintptr(cInputs), uintptr(unsafe.Pointer(pInputs)), uintptr(cbSize))
 
-	if result == 0 {
-		log.Println("SendInput error:", err)
-		return 00
-	}
-
-	return uint(result)
+	return uint(result), err
 }
 
 // GetKeyState Retrieves the status of the specified virtual key
@@ -256,30 +243,26 @@ func SendInput(cInputs uint, pInputs *LPINPUT, cbSize int) uint {
 //
 // Since SHORT is int16, a negative value will indicates high-order bit is 1
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getkeystate
-func GetKeyState(nVirtKey int) SHORT {
-	result, _, _ := winDLLUser32_GetKeyState.Call(uintptr(nVirtKey))
+func GetKeyState(nVirtKey int) (SHORT, error) {
+	result, _, err := winDLLUser32_GetKeyState.Call(uintptr(nVirtKey))
 
-	return SHORT(result)
+	return SHORT(result), err
 }
 
 // Retrieve a handle to the user active foreground window
+// Result is null if empty handle
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow
-func GetForegroundWindow() HWND {
+func GetForegroundWindow() (HWND, error) {
 	result, _, err := winDLLUser32_GetForegroundWindow.Call()
 
-	if result == 0 {
-		log.Println("GetForegroundWindow error:", err)
-	}
-
-	return HWND(result)
+	return HWND(result), err
 }
 
 // Send the specified message to a window.
 // The method does not return until the window procedure processed the message
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendmessage
-func SendMessage(hWnd HWND, Msg uint, wParam WPARAM, lParam LPARAM) LRESULT {
-	result, _, err := winDLLUser32_SendMessage.Call(uintptr(hWnd), uintptr(Msg), uintptr(wParam), uintptr(lParam))
+func SendMessageW(hWnd HWND, Msg uint, wParam WPARAM, lParam LPARAM) (LRESULT, error) {
+	result, _, err := winDLLUser32_SendMessageW.Call(uintptr(hWnd), uintptr(Msg), uintptr(wParam), uintptr(lParam))
 
-	log.Println("Error", err)
-	return LRESULT(result)
+	return LRESULT(result), err
 }
