@@ -23,7 +23,7 @@ func receiveHook() {
 		// If keystroke is pressed down
 		if wParam == 256 {
 			// Retrieve the keyboard hook struct
-			keyboardHookData := (*tagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
+			keyboardHookData := (*TagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
 
 			// Retrieve current keystroke from keyboard hook struct's vkCode
 			currentKeystroke := rune((*keyboardHookData).vkCode)
@@ -66,7 +66,7 @@ func processHook() {
 
 		// Process keystroke
 		fmt.Printf("Current key: %d\n", currentKeyStroke)
-		// TestSendMessage()
+
 		if commandReady && (currentKeyStroke == VK_SPACE || currentKeyStroke == VK_TAB) {
 			fmt.Println("Command ready in", uint16(userCommands[bufferCommand][0]))
 			switch currentKeyStroke {
@@ -124,17 +124,17 @@ func defineCommands() {
 	maxBufferLen = 5
 }
 
-func createKeyboardTagInputs(str string) []tagINPUT {
-	var tagInputs []tagINPUT
+func createKeyboardTagInputs(str string) []TagINPUT {
+	var tagInputs []TagINPUT
 
-	shiftDownInput := tagINPUT{
+	shiftDownInput := TagINPUT{
 		inputType: INPUT_KEYBOARD,
 		ki: KEYBDINPUT{
 			WVk: VK_SHIFT,
 		},
 	}
 
-	shiftUpInput := tagINPUT{
+	shiftUpInput := TagINPUT{
 		inputType: INPUT_KEYBOARD,
 		ki: KEYBDINPUT{
 			WVk:     VK_SHIFT,
@@ -145,7 +145,7 @@ func createKeyboardTagInputs(str string) []tagINPUT {
 	for _, v := range str {
 		switch {
 		case 65 <= v && v <= 90: // Capital letter
-			key := tagINPUT{
+			key := TagINPUT{
 				inputType: INPUT_KEYBOARD,
 				ki: KEYBDINPUT{
 					WVk: uint16(v),
@@ -155,7 +155,7 @@ func createKeyboardTagInputs(str string) []tagINPUT {
 			tagInputs = append(tagInputs, shiftDownInput, key, shiftUpInput)
 
 		case 97 <= v && v <= 122: // Small letters
-			key := tagINPUT{
+			key := TagINPUT{
 				inputType: INPUT_KEYBOARD,
 				ki: KEYBDINPUT{
 					WVk: uint16(strings.ToUpper(string(v))[0]),
@@ -165,7 +165,7 @@ func createKeyboardTagInputs(str string) []tagINPUT {
 			tagInputs = append(tagInputs, key)
 
 		case v == 40: // Left bracket
-			key := tagINPUT{
+			key := TagINPUT{
 				inputType: INPUT_KEYBOARD,
 				ki: KEYBDINPUT{
 					WVk: VK_NINE,
@@ -174,7 +174,7 @@ func createKeyboardTagInputs(str string) []tagINPUT {
 
 			tagInputs = append(tagInputs, shiftDownInput, key, shiftUpInput)
 		case v == 41: // Right bracket
-			key := tagINPUT{
+			key := TagINPUT{
 				inputType: INPUT_KEYBOARD,
 				ki: KEYBDINPUT{
 					WVk: VK_ZERO,
@@ -184,7 +184,7 @@ func createKeyboardTagInputs(str string) []tagINPUT {
 			tagInputs = append(tagInputs, shiftDownInput, key, shiftUpInput)
 
 		case v == 46: // Period
-			key := tagINPUT{
+			key := TagINPUT{
 				inputType: INPUT_KEYBOARD,
 				ki: KEYBDINPUT{
 					WVk: VK_OEM_PERIOD,
@@ -194,7 +194,7 @@ func createKeyboardTagInputs(str string) []tagINPUT {
 			tagInputs = append(tagInputs, key)
 
 		case v == 32: // Space
-			key := tagINPUT{
+			key := TagINPUT{
 				inputType: INPUT_KEYBOARD,
 				ki: KEYBDINPUT{
 					WVk: VK_SPACE,
@@ -210,22 +210,6 @@ func createKeyboardTagInputs(str string) []tagINPUT {
 	}
 
 	return tagInputs
-}
-
-func TestSendMessage() {
-	handle := GetForegroundWindow()
-	titleSize := SendMessage(handle, WM_GETTEXTLENGTH, 0, 0)
-
-	if titleSize == 0 {
-		log.Println("Empty title")
-	} else {
-		title := make([]byte, titleSize+1)
-
-		log.Println("Sending message", len(title))
-		SendMessage(handle, WM_GETTEXT, WPARAM(len(title)), (uintptr(unsafe.Pointer(&title))))
-		log.Println("Doneending message", title)
-
-	}
 }
 
 func main() {
