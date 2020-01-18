@@ -8,26 +8,30 @@ import (
 
 type (
 	SHORT     int16
+	WORD      uint16
 	DWORD     uint32
-	ULONG_PTR uint32
 	LRESULT   int64
-	LPARAM    int64
 	HHOOK     uintptr
 	HINSTANCE uintptr
 	HWND      uintptr
 	LPMSG     uintptr
 	WPARAM    uintptr
+	LPARAM    uintptr
+	ULONG_PTR uintptr
 	LPINPUT   TagINPUT
 
-	// HOOKPROC Callback function after SendMessageW function is called (Keyboard input received)
+	// HOOKPROC Callback function after SendMessageW function is called (Keyboard input received).
+	//
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nc-winuser-hookproc
 	//
 	// LPARAM is a pointer to a KBDLLHOOKSTRUCT struct :
+	//
 	// https://docs.microsoft.com/en-us/previous-versions/windows/desktop/legacy/ms644985(v=vs.85)
 	HOOKPROC func(int, WPARAM, LPARAM) LRESULT
 )
 
-// Low-level keyboard input event
+// Low-level keyboard input event.
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-kbdllhookstruct
 type TagKBDLLHOOKSTRUCT struct {
 	VkCode      DWORD
@@ -38,29 +42,33 @@ type TagKBDLLHOOKSTRUCT struct {
 }
 
 // Input events
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-input
 type TagINPUT struct {
-	InputType uint32
+	InputType DWORD
 	Ki        KEYBDINPUT
 	padding   uint64
 }
 
 // KEYBDINPUT Simulated keyboard event
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput
 type KEYBDINPUT struct {
-	WVk         uint16
-	WScan       uint16
-	DwFlags     uint32
-	Time        uint32
-	DwExtraInfo uintptr
+	WVk         WORD
+	WScan       WORD
+	DwFlags     DWORD
+	Time        DWORD
+	DwExtraInfo ULONG_PTR
 }
 
 const (
 	// Types of hook procedure:
+	//
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexw
 	WH_KEYBOARD_LL = 13
 
 	// Virtual Key Codes:
+	//
 	// https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 	VK_BACK       = 0x08 // Key: BACKSPACE
 	VK_TAB        = 0x09 // Key: TAB
@@ -146,12 +154,14 @@ const (
 	VK_OEM_7      = 0xDE // Key: '"
 
 	// INPUT_MOUSE Types of input event:
+	//
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-input#members
 	INPUT_MOUSE    = 0
 	INPUT_KEYBOARD = 1
 	INPUT_HARDWARE = 2
 
 	// KEYEVENTF_EXTENDEDKEY Keystroke for dwFlags in KEYBDINPUT
+	//
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput#members
 	KEYEVENTF_EXTENDEDKEY = 0x0001
 	KEYEVENTF_KEYUP       = 0x0002
@@ -159,12 +169,14 @@ const (
 	KEYEVENTF_UNICODE     = 0x0004
 
 	// Window Messages: Code to get and send messages between applications
+	//
 	// https://docs.microsoft.com/en-us/windows/win32/winmsg/window-messages
 	WM_SETTEXT       = 0x000C
 	WM_GETTEXT       = 0x000D
 	WM_GETTEXTLENGTH = 0x000E
 
 	// Keyboard Input Notifications
+	//
 	// https://docs.microsoft.com/en-us/windows/win32/inputdev/keyboard-input-notifications
 	WM_KEYDOWN    = 0x0100 // Decimal: 256
 	WM_KEYUP      = 0x0101 // Decimal: 257
@@ -187,7 +199,7 @@ var (
 	winDLLUser32_SendMessageW            = winDLLUser32.NewProc("SendMessageW")
 )
 
-// LoadDLLs loads all required DLLs and return if error(s) occurred
+// LoadDLLs loads all required DLLs and return if error(s) occurred.
 func LoadDLLs() error {
 	// Load user32.dll
 	err := winDLLUser32.Load()
@@ -195,8 +207,9 @@ func LoadDLLs() error {
 	return err
 }
 
-// CallNextHookEx Pass the hook information to the next hook procedure
-// A hook procedure can call this function either before or after processing the hook information
+// CallNextHookEx Pass the hook information to the next hook procedure.
+// A hook procedure can call this function either before or after processing the hook information.
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-callnexthookex
 func CallNextHookEx(hhk HHOOK, nCode int, wParam WPARAM, lParam LPARAM) LRESULT {
 	result, _, _ := winDLLUser32_ProcCallNextHookEx.Call(uintptr(hhk), uintptr(nCode), uintptr(wParam), uintptr(lParam))
@@ -204,8 +217,9 @@ func CallNextHookEx(hhk HHOOK, nCode int, wParam WPARAM, lParam LPARAM) LRESULT 
 	return LRESULT(result)
 }
 
-// SetWindowsHookExW Install hook procedure into a hhook chain
-// Result is null if error
+// SetWindowsHookExW Install hook procedure into a hhook chain.
+// Result is null if error.
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexw
 func SetWindowsHookExW(idHook int, lpfn HOOKPROC, hmod HINSTANCE, dwThreadID DWORD) (HHOOK, error) {
 	result, _, err := winDLLUser32_ProcSetWindowsHookExW.Call(uintptr(idHook), windows.NewCallback(lpfn), uintptr(hmod), uintptr(dwThreadID))
@@ -213,8 +227,9 @@ func SetWindowsHookExW(idHook int, lpfn HOOKPROC, hmod HINSTANCE, dwThreadID DWO
 	return HHOOK(result), err
 }
 
-// UnhookWindowsHookEx Remove a hook procedure installed in a hook chain by the SetWindowsHookEx function
-// Result is zero if error
+// UnhookWindowsHookEx Remove a hook procedure installed in a hook chain by the SetWindowsHookEx function.
+// Result is zero if error.
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unhookwindowshookex
 func UnhookWindowsHookEx(hhk HHOOK) (bool, error) {
 	result, _, err := winDLLUser32_ProcUnhookWindowsHookEx.Call(uintptr(hhk))
@@ -222,8 +237,9 @@ func UnhookWindowsHookEx(hhk HHOOK) (bool, error) {
 	return result != 0, err
 }
 
-// GetMessageW Retrieves a message
-// Result is -1 if error
+// GetMessageW Retrieves a message.
+// Result is -1 if error.
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
 func GetMessageW(lpMsg LPMSG, hWnd HWND, wMsgFilterMin uint, wMsgFilterMax uint) (bool, error) {
 	result, _, err := winDLLUser32_GetMessageW.Call(uintptr(lpMsg), uintptr(hWnd), uintptr(wMsgFilterMin), uintptr(wMsgFilterMax))
@@ -231,8 +247,9 @@ func GetMessageW(lpMsg LPMSG, hWnd HWND, wMsgFilterMin uint, wMsgFilterMax uint)
 	return result != 0, err
 }
 
-// SendInput Simulate keyboard inputs to the operating system
-// Result is zero if error
+// SendInput Simulate keyboard inputs to the operating system.
+// Result is zero if error.
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput
 func SendInput(cInputs uint, pInputs *LPINPUT, cbSize int) (uint, error) {
 
@@ -241,14 +258,17 @@ func SendInput(cInputs uint, pInputs *LPINPUT, cbSize int) (uint, error) {
 	return uint(result), err
 }
 
-// GetKeyState Retrieves the status of the specified virtual key
-// The status specifies whether the key is up, down or toggled (on, off - alternating each time the key is pressed)
+// GetKeyState Retrieves the status of the specified virtual key.
+// The status specifies whether the key is up, down or toggled
+// (on, off - alternating each time the key is pressed).
+// Returned bits = 16 bits.
 //
-// Returned bits = 16 bits
-// If high-order bit is 1, the key is down, otherwise it is up
-// If low-order bit is 1, the key is toggled on, otherwise the key is off
+// If high-order bit is 1, the key is down, otherwise it is up.
+//
+// If low-order bit is 1, the key is toggled on, otherwise the key is off.
 //
 // Since SHORT is int16, a negative value will indicates high-order bit is 1
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getkeystate
 func GetKeyState(nVirtKey int) (SHORT, error) {
 	result, _, err := winDLLUser32_GetKeyState.Call(uintptr(nVirtKey))
@@ -256,8 +276,9 @@ func GetKeyState(nVirtKey int) (SHORT, error) {
 	return SHORT(result), err
 }
 
-// Retrieve a handle to the user active foreground window
-// Result is null if empty handle
+// Retrieve a handle to the user active foreground window.
+// Result is null if empty handle.
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow
 func GetForegroundWindow() (HWND, error) {
 	result, _, err := winDLLUser32_GetForegroundWindow.Call()
@@ -266,7 +287,8 @@ func GetForegroundWindow() (HWND, error) {
 }
 
 // Send the specified message to a window.
-// The method does not return until the window procedure processed the message
+// The method does not return until the window procedure processed the message.
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendmessage
 func SendMessageW(hWnd HWND, Msg uint, wParam WPARAM, lParam LPARAM) (LRESULT, error) {
 	result, _, err := winDLLUser32_SendMessageW.Call(uintptr(hWnd), uintptr(Msg), uintptr(wParam), uintptr(lParam))

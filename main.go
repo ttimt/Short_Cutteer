@@ -59,11 +59,16 @@ func receiveHook() {
 // Process your received keystroke here
 func processHook() {
 	for {
-		// Receive keystroke from channel
+		// Receive keystroke as rune from channel
 		currentKeyStroke := <-currentKeyStrokeSignal
 
 		// Process keystroke
 		fmt.Printf("Current key: %d 0x%x %c\n", currentKeyStroke, currentKeyStroke, currentKeyStroke)
+
+		// shiftKeyState, _ := GetKeyState(VK_SHIFT)
+		// capsLockState, _ := GetKeyState(VK_CAPITAL)
+		//
+		// _, char, _ := findAllKeyCode(uint16(currentKeyStroke), 0, getKeyStateBool(shiftKeyState))
 
 		// If left bracket, left bracket, space x2, right bracket, left arrow x2
 		// If first double/single quotes, right quote, left arrow
