@@ -60,7 +60,7 @@ const (
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexw
 	WH_KEYBOARD_LL = 13
 
-	// Virtual key codes:
+	// Virtual Key Codes:
 	// https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 	VK_BACK       = 0x08 // Key: BACKSPACE
 	VK_TAB        = 0x09 // Key: TAB
@@ -163,6 +163,13 @@ const (
 	WM_SETTEXT       = 0x000C
 	WM_GETTEXT       = 0x000D
 	WM_GETTEXTLENGTH = 0x000E
+
+	// Keyboard Input Notifications
+	// https://docs.microsoft.com/en-us/windows/win32/inputdev/keyboard-input-notifications
+	WM_KEYDOWN    = 0x0100 // Decimal: 256
+	WM_KEYUP      = 0x0101 // Decimal: 257
+	WM_SYSKEYDOWN = 0x0104 // When ALT key pressed || a key pressed with ALT pressed
+	WM_SYSKEYUP   = 0x0105 // When ALT key pressed + a key released while pressed with ALT key
 )
 
 var (

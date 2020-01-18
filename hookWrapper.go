@@ -6,29 +6,6 @@ import (
 	. "github.com/ttimt/Short_Cutteer/hook/windows"
 )
 
-// Create base tag input keyboard template
-func tagInputKeyboard() TagINPUT {
-	return TagINPUT{
-		InputType: INPUT_KEYBOARD,
-	}
-}
-
-// Create tag input for SHIFT key down
-func tagInputShiftDown() TagINPUT {
-	tagInput := tagInputKeyboard()
-	tagInput.Ki.WVk = VK_SHIFT
-
-	return tagInput
-}
-
-// Create tag input for SHIFT key up by adding key event flag with SHIFT key down
-func tagInputShiftUp() TagINPUT {
-	tagInput := tagInputShiftDown()
-	tagInput.Ki.DwFlags = KEYEVENTF_KEYUP
-
-	return tagInput
-}
-
 // Create []TagInputs that can be used in SendInput() function
 func createTagInputs(strToSend string) (tagInputs []TagINPUT) {
 
@@ -252,4 +229,16 @@ func findNonShiftKeyCode(k uint16, c rune) (keyCode uint16, char rune) {
 	}
 
 	return
+}
+
+// Ex: To insert left arrow 5 times, do:
+// multiplyTagInputKey(tagInputLeftArrowDown(), 5)
+func multiplyTagInputKey(tagInput TagINPUT, multiplier int) []TagINPUT {
+	tagInputs := make([]TagINPUT, multiplier)
+
+	for k := range tagInputs {
+		tagInputs[k] = tagInput
+	}
+
+	return tagInputs
 }
