@@ -30,7 +30,7 @@ type (
 // Low-level keyboard input event
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-kbdllhookstruct
 type TagKBDLLHOOKSTRUCT struct {
-	vkCode      DWORD
+	VkCode      DWORD
 	scanCode    DWORD
 	flags       DWORD
 	time        DWORD
@@ -40,8 +40,8 @@ type TagKBDLLHOOKSTRUCT struct {
 // Input events
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-input
 type TagINPUT struct {
-	inputType uint32
-	ki        KEYBDINPUT
+	InputType uint32
+	Ki        KEYBDINPUT
 	padding   uint64
 }
 
@@ -78,16 +78,16 @@ const (
 	VK_RIGHT      = 0x27 // Key: RIGHT ARROW
 	VK_DOWN       = 0x28 // Key: DOWN ARROW
 	VK_DELETE     = 0x2E // Key: DEL
-	VK_ZERO       = 0x30 // Key: ZERO
-	VK_ONE        = 0x31 // Key: ONE
-	VK_TWO        = 0x32 // Key: TWO
-	VK_THREE      = 0x33 // Key: THREE
-	VK_FOUR       = 0x34 // Key: FOUR
-	VK_FIVE       = 0x35 // Key: FIVE
-	VK_SIX        = 0x36 // Key: SIX
-	VK_SEVEN      = 0x37 // Key: SEVEN
-	VK_EIGHT      = 0x38 // Key: EIGHT
-	VK_NINE       = 0x39 // Key: NINE
+	VK_ZERO       = 0x30 // Key: 0
+	VK_ONE        = 0x31 // Key: 1
+	VK_TWO        = 0x32 // Key: 2
+	VK_THREE      = 0x33 // Key: 3
+	VK_FOUR       = 0x34 // Key: 4
+	VK_FIVE       = 0x35 // Key: 5
+	VK_SIX        = 0x36 // Key: 6
+	VK_SEVEN      = 0x37 // Key: 7
+	VK_EIGHT      = 0x38 // Key: 8
+	VK_NINE       = 0x39 // Key: 9
 	VK_A          = 0x41 // Key: A
 	VK_B          = 0x42 // Key: B
 	VK_C          = 0x43 // Key: C
@@ -133,17 +133,17 @@ const (
 	VK_RSHIFT     = 0xA1 // Key: Right SHIFT
 	VK_LCONTROL   = 0xA2 // Key: Left CONTROL
 	VK_RCONTROL   = 0xA3 // Key: RIGHT CONTROL
-	VK_OEM_1      = 0xBA // Key: ";:
+	VK_OEM_1      = 0xBA // Key: ;:
 	VK_OEM_PLUS   = 0xBB // Key: +
 	VK_OEM_COMMA  = 0xBC // Key: ,
 	VK_OEM_MINUS  = 0xBD // Key: -
 	VK_OEM_PERIOD = 0xBE // Key: .
-	VK_OEM_2      = 0xBF // Key: "/?"
-	VK_OEM_3      = 0xc0 // Key: "`~"
-	VK_OEM_4      = 0xDB // Key: "[{"
-	VK_OEM_5      = 0xDC // Key: "\|"
-	VK_OEM_6      = 0xDD // Key: "]}"
-	VK_OEM_7      = 0xDE // Key: "'""
+	VK_OEM_2      = 0xBF // Key: /?
+	VK_OEM_3      = 0xc0 // Key: `~
+	VK_OEM_4      = 0xDB // Key: [{
+	VK_OEM_5      = 0xDC // Key: \|
+	VK_OEM_6      = 0xDD // Key: ]}
+	VK_OEM_7      = 0xDE // Key: '"
 
 	// INPUT_MOUSE Types of input event:
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-input#members
@@ -191,10 +191,10 @@ func LoadDLLs() error {
 // CallNextHookEx Pass the hook information to the next hook procedure
 // A hook procedure can call this function either before or after processing the hook information
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-callnexthookex
-func CallNextHookEx(hhk HHOOK, nCode int, wParam WPARAM, lParam LPARAM) (LRESULT, error) {
-	result, _, err := winDLLUser32_ProcCallNextHookEx.Call(uintptr(hhk), uintptr(nCode), uintptr(wParam), uintptr(lParam))
+func CallNextHookEx(hhk HHOOK, nCode int, wParam WPARAM, lParam LPARAM) LRESULT {
+	result, _, _ := winDLLUser32_ProcCallNextHookEx.Call(uintptr(hhk), uintptr(nCode), uintptr(wParam), uintptr(lParam))
 
-	return LRESULT(result), err
+	return LRESULT(result)
 }
 
 // SetWindowsHookExW Install hook procedure into a hhook chain
@@ -221,7 +221,7 @@ func UnhookWindowsHookEx(hhk HHOOK) (bool, error) {
 func GetMessageW(lpMsg LPMSG, hWnd HWND, wMsgFilterMin uint, wMsgFilterMax uint) (bool, error) {
 	result, _, err := winDLLUser32_GetMessageW.Call(uintptr(lpMsg), uintptr(hWnd), uintptr(wMsgFilterMin), uintptr(wMsgFilterMax))
 
-	return result != -1, err
+	return result != 0, err
 }
 
 // SendInput Simulate keyboard inputs to the operating system
