@@ -19,7 +19,7 @@ func receiveHook() {
 	// Declare a keyboard hook callback function (type HOOKPROC)
 	hookCallback := func(code int, wParam WPARAM, lParam LPARAM) LRESULT {
 		// If keystroke is pressed down
-		if wParam == 256 {
+		if wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN {
 			// Retrieve the keyboard hook struct
 			keyboardHookData := (*TagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
 
@@ -31,9 +31,9 @@ func receiveHook() {
 			case currentKeyStrokeSignal <- currentKeystroke:
 
 			default:
-				// Skip if the channel currentKeyStrokeSignal is busy
-				// as it means that the keystroke is sent from the processHook
-				// We want to ignore keystrokes that we sent ourself
+				// Skip if the channel currentKeyStrokeSignal is busy,
+				// as it means the current keystroke is sent by the processHook while processing,
+				// we want to ignore keystrokes that we sent ourself
 			}
 		}
 
@@ -77,8 +77,8 @@ func processHook() {
 }
 
 func defineCommands() {
-	userCommands["/akey"] = ""
-	userCommands["/adef"] = ""
+	userCommands["/akey"] = "VALUE( object.Key() )"
+	userCommands["/adef"] = "VALUE( object.DefinitionName() )"
 
 	maxBufferLen = 5
 }
