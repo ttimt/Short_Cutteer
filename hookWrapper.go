@@ -6,6 +6,10 @@ import (
 	. "github.com/ttimt/Short_Cutteer/hook/windows"
 )
 
+const (
+	windowsNewLine = "\r\n"
+)
+
 // Create []TagInputs that can be used in SendInput() function
 func createTagInputs(strToSend string) (tagInputs []TagINPUT) {
 
@@ -39,9 +43,9 @@ func createTagInputs(strToSend string) (tagInputs []TagINPUT) {
 // (3rd param: GetKeyState SHIFT_KEY, 4th param: GetKeyState CAPS_LOCK),
 // and use only 2nd return value.
 //
-// Not used input parameters put 0 and _
-//
-// If empty, return value key code is 0 and char is -1
+// Default values for input and return values:
+// keyCode: 0
+// char: -1
 //
 // Paramters: Key code, character, is shift enabled, is caps lock enabled.
 //
@@ -49,18 +53,24 @@ func createTagInputs(strToSend string) (tagInputs []TagINPUT) {
 func findAllKeyCode(k uint16, c rune, isCapitalEnabled ...bool) (keyCode WORD, char rune, isShiftNeeded bool) {
 	paramBoolLen := len(isCapitalEnabled)
 
-	if paramBoolLen != 0 && paramBoolLen != 2 {
+	if paramBoolLen == 2 && k == 0 || paramBoolLen == 0 && c == -1 {
 		panic("Wrong parameter for function findAllKeyCode")
 	}
 
-	isCapitalLetter := IsCapitalLetterEnabled(isCapitalEnabled[0], isCapitalEnabled[1])
+	// Receiving text
+	if paramBoolLen > 0 {
+		isCapitalLetter := IsCapitalLetterEnabled(isCapitalEnabled[0], isCapitalEnabled[1])
 
-	if paramBoolLen > 0 && !isCapitalLetter {
-		keyCode, char = findNonShiftKeyCode(k, c)
+		if isCapitalEnabled[0] {
+			keyCode, char = findShiftKeyCode(k, c, isCapitalLetter)
+		} else {
+			keyCode, char = findNonShiftKeyCode(k, c, isCapitalLetter)
+		}
 	} else {
+		// Sending text
 		keyCode, char = findShiftKeyCode(k, c)
 
-		if isShiftNeeded = keyCode != 0; isShiftNeeded || paramBoolLen > 0 {
+		if isShiftNeeded = keyCode != 0; isShiftNeeded {
 			return
 		}
 
@@ -71,7 +81,11 @@ func findAllKeyCode(k uint16, c rune, isCapitalEnabled ...bool) (keyCode WORD, c
 }
 
 // SHIFT needed
-func findShiftKeyCode(k uint16, c rune) (keyCode WORD, char rune) {
+func findShiftKeyCode(k uint16, c rune, isCapitalLetter ...bool) (keyCode WORD, char rune) {
+	if k != 0 && len(isCapitalLetter) == 0 {
+		panic("No capital letter state received when receiving keystroke")
+	}
+
 	// Use ASCII value to identify character
 	switch {
 	case k == VK_ONE, c == 33: // Exclamation mark !
@@ -86,9 +100,9 @@ func findShiftKeyCode(k uint16, c rune) (keyCode WORD, char rune) {
 		keyCode = VK_THREE
 		char = 35
 
-	case k == VK_FOUR, c == 36:
+	case k == VK_FOUR, c == 36: // Dollar $
 		keyCode = VK_FOUR
-		char = 37
+		char = 36
 
 	case k == VK_FIVE, c == 37: // Percent %
 		keyCode = VK_FIVE
@@ -138,6 +152,11 @@ func findShiftKeyCode(k uint16, c rune) (keyCode WORD, char rune) {
 		keyCode = WORD(c)
 		char = rune(k)
 
+		// If shift pressed and caps lock toggled
+		if len(isCapitalLetter) > 0 && !isCapitalLetter[0] {
+			char = rune(strings.ToLower(string(k))[0])
+		}
+
 	case k == VK_SIX, c == 94: // Caret ^
 		keyCode = VK_SIX
 		char = 94
@@ -172,19 +191,20 @@ func findShiftKeyCode(k uint16, c rune) (keyCode WORD, char rune) {
 }
 
 // SHIFT not needed
-func findNonShiftKeyCode(k uint16, c rune) (keyCode WORD, char rune) {
+func findNonShiftKeyCode(k uint16, c rune, isCapitalLetter ...bool) (keyCode WORD, char rune) {
+	if k != 0 && len(isCapitalLetter) == 0 {
+		panic("No capital letter state received when receiving keystroke")
+	}
+
 	// Use ASCII value to identify character
 	switch {
-	case k == VK_BACK, c == 8, // Backspace
-		k == VK_TAB, c == 9, // horizontal tab
+	case k == VK_BACK, c == 8, // Backspace '\b'
+		k == VK_TAB, c == 9, // horizontal tab '\t'
 		k == VK_SPACE, c == 32, // spacebar
+		k == VK_RETURN, c == 13, // CRLF - only carriage return for ENTER key '\r'
 		VK_ZERO <= k && k <= VK_NINE, 48 <= c && c <= 57: // 0-9
 		keyCode = WORD(c)
 		char = rune(k)
-
-	case k == VK_RETURN, c == 10: // Line feed '\n'
-		keyCode = VK_RETURN
-		char = 10
 
 	case k == VK_OEM_7, c == 39: // Single quote
 		keyCode = VK_OEM_7
@@ -234,6 +254,11 @@ func findNonShiftKeyCode(k uint16, c rune) (keyCode WORD, char rune) {
 		keyCode = WORD(strings.ToUpper(string(c))[0]) // Keyboard code equals capital letter value
 		char = rune(strings.ToLower(string(k))[0])
 
+		// If shift no pressed but caps lock toggled
+		if len(isCapitalLetter) > 0 && isCapitalLetter[0] {
+			char = rune(k)
+		}
+
 	case k == VK_DELETE, c == 127: // Grave accent '`'
 		keyCode = VK_DELETE
 		char = 127
@@ -268,7 +293,7 @@ func getKeyStateBool(state SHORT, checkToggle ...bool) bool {
 		return state&1 == 1
 	}
 
-	return state>>15 == 1
+	return state < 0
 }
 
 // Check whether key is a capital letter

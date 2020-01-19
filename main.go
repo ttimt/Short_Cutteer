@@ -14,6 +14,7 @@ var hhook HHOOK
 var currentKeyStrokeSignal = make(chan rune)
 var userCommands = make(map[string]string)
 var maxBufferLen int
+var bufferStr string
 
 func receiveHook() {
 	// Declare a keyboard hook callback function (type HOOKPROC)
@@ -63,15 +64,41 @@ func processHook() {
 		currentKeyStroke := <-currentKeyStrokeSignal
 
 		// Process keystroke
-		fmt.Printf("Current key: %d 0x%x %c\n", currentKeyStroke, currentKeyStroke, currentKeyStroke)
+		fmt.Printf("Current key: %d 0x0%X %c\n", currentKeyStroke, currentKeyStroke, currentKeyStroke)
 
 		shiftKeyState, _ := GetKeyState(VK_SHIFT)
 		capsLockState, _ := GetKeyState(VK_CAPITAL)
 
 		_, char, _ := findAllKeyCode(uint16(currentKeyStroke), 0, getKeyStateBool(shiftKeyState), getKeyStateBool(capsLockState, true))
-		if char != -1 {
-			fmt.Printf("Real string is: %c\n", char)
+
+		// Reset if character is not a letter/symbol/number
+		if char == -1 {
+			bufferStr = ""
+
+			continue
 		}
+
+		// TODO do not add to bufferStr if modifier is added (CTRL and ALT)
+		// TODO user pre-commands can be CTRL, ALT, SHIFT and 1 letter afterwards
+		// TODO if modifier pressed, check one character after that
+		// TODO modifier CTRL or ALT or both have to be enabled before shift can be enabled
+		// User can create shortcut MODIFIER + a key or text commands + tab or space (remove commands)
+		switch char {
+		case '\b':
+			if len(bufferStr) > 0 {
+				bufferStr = bufferStr[:len(bufferStr)-1]
+			}
+		case '\r':
+			bufferStr += windowsNewLine
+		case '\t':
+			bufferStr += string(char) // TODO activator tab: check for command
+		case ' ':
+			bufferStr += string(char) // TODO activator space: check for command
+		default:
+			bufferStr += string(char)
+		}
+
+		fmt.Println("Buffer string:", bufferStr)
 
 		// If left bracket, left bracket, space x2, right bracket, left arrow x2
 		// If first double/single quotes, right quote, left arrow
