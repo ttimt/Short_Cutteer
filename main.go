@@ -65,10 +65,13 @@ func processHook() {
 		// Process keystroke
 		fmt.Printf("Current key: %d 0x%x %c\n", currentKeyStroke, currentKeyStroke, currentKeyStroke)
 
-		// shiftKeyState, _ := GetKeyState(VK_SHIFT)
-		// capsLockState, _ := GetKeyState(VK_CAPITAL)
-		//
-		// _, char, _ := findAllKeyCode(uint16(currentKeyStroke), 0, getKeyStateBool(shiftKeyState))
+		shiftKeyState, _ := GetKeyState(VK_SHIFT)
+		capsLockState, _ := GetKeyState(VK_CAPITAL)
+
+		_, char, _ := findAllKeyCode(uint16(currentKeyStroke), 0, getKeyStateBool(shiftKeyState), getKeyStateBool(capsLockState, true))
+		if char != -1 {
+			fmt.Printf("Real string is: %c\n", char)
+		}
 
 		// If left bracket, left bracket, space x2, right bracket, left arrow x2
 		// If first double/single quotes, right quote, left arrow
@@ -76,7 +79,8 @@ func processHook() {
 		// if after {  } and enter, delete, backspace, left arrow, enter, right arrow, enter x2, left arrow
 		// if command xxx and tab, enter yyy
 		// if command xxx and space, backspace xxx len and enter yyy
-		// If brackets or quotes, just can copy text (mouse + keyboard to detect there is text selected), copy, left bracket/quote, space, paste, space, right bracket/quote
+		// If brackets or quotes, just can copy text (mouse + keyboard to detect there is text selected),
+		//      copy, left bracket/quote, space, paste, space, right bracket/quote
 		// If 'shortcut key', copy and format and paste
 	}
 }

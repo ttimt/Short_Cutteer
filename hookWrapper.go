@@ -30,21 +30,37 @@ func createTagInputs(strToSend string) (tagInputs []TagINPUT) {
 	return
 }
 
-// Find listed key code from the given character
-// If sending text to keyboard, fill the 2nd parameter, and use only 1st and 3rd return values
-// If receiving text from keyboard, fill 1st and 3rd paramters (3rd paramter: GetKeyState: SHIFT_KEY XOR CAPS_LOCK), and use only 2nd return value
-// Not used parameters put 0 and _
+// Find listed key code from the given character.
+//
+// If sending text to keyboard,
+// fill the 2nd parameter, and use only 1st and 3rd return values.
+//
+// If receiving text from keyboard, fill 1st, 3rd and 4th paramters
+// (3rd param: GetKeyState SHIFT_KEY, 4th param: GetKeyState CAPS_LOCK),
+// and use only 2nd return value.
+//
+// Not used input parameters put 0 and _
 //
 // If empty, return value key code is 0 and char is -1
 //
-// Paramters: Key code, character, is caps lock enabled
-func findAllKeyCode(k uint16, c rune, isCapsLockEnabled ...bool) (keyCode uint16, char rune, isShiftNeeded bool) {
-	if len(isCapsLockEnabled) > 0 && !isCapsLockEnabled[0] {
+// Paramters: Key code, character, is shift enabled, is caps lock enabled.
+//
+// Return values: Key code, character, is shift needed
+func findAllKeyCode(k uint16, c rune, isCapitalEnabled ...bool) (keyCode WORD, char rune, isShiftNeeded bool) {
+	paramBoolLen := len(isCapitalEnabled)
+
+	if paramBoolLen != 0 && paramBoolLen != 2 {
+		panic("Wrong parameter for function findAllKeyCode")
+	}
+
+	isCapitalLetter := IsCapitalLetterEnabled(isCapitalEnabled[0], isCapitalEnabled[1])
+
+	if paramBoolLen > 0 && !isCapitalLetter {
 		keyCode, char = findNonShiftKeyCode(k, c)
 	} else {
 		keyCode, char = findShiftKeyCode(k, c)
 
-		if isShiftNeeded = keyCode != 0; isShiftNeeded || len(isCapsLockEnabled) > 0 {
+		if isShiftNeeded = keyCode != 0; isShiftNeeded || paramBoolLen > 0 {
 			return
 		}
 
@@ -55,7 +71,7 @@ func findAllKeyCode(k uint16, c rune, isCapsLockEnabled ...bool) (keyCode uint16
 }
 
 // SHIFT needed
-func findShiftKeyCode(k uint16, c rune) (keyCode uint16, char rune) {
+func findShiftKeyCode(k uint16, c rune) (keyCode WORD, char rune) {
 	// Use ASCII value to identify character
 	switch {
 	case k == VK_ONE, c == 33: // Exclamation mark !
@@ -119,7 +135,7 @@ func findShiftKeyCode(k uint16, c rune) (keyCode uint16, char rune) {
 		char = 64
 
 	case VK_A <= k && k <= VK_Z, 65 <= c && c <= 90: // Capital letter: A-Z
-		keyCode = uint16(c)
+		keyCode = WORD(c)
 		char = rune(k)
 
 	case k == VK_SIX, c == 94: // Caret ^
@@ -156,14 +172,14 @@ func findShiftKeyCode(k uint16, c rune) (keyCode uint16, char rune) {
 }
 
 // SHIFT not needed
-func findNonShiftKeyCode(k uint16, c rune) (keyCode uint16, char rune) {
+func findNonShiftKeyCode(k uint16, c rune) (keyCode WORD, char rune) {
 	// Use ASCII value to identify character
 	switch {
 	case k == VK_BACK, c == 8, // Backspace
 		k == VK_TAB, c == 9, // horizontal tab
 		k == VK_SPACE, c == 32, // spacebar
 		VK_ZERO <= k && k <= VK_NINE, 48 <= c && c <= 57: // 0-9
-		keyCode = uint16(c)
+		keyCode = WORD(c)
 		char = rune(k)
 
 	case k == VK_RETURN, c == 10: // Line feed '\n'
@@ -215,7 +231,7 @@ func findNonShiftKeyCode(k uint16, c rune) (keyCode uint16, char rune) {
 		char = 96
 
 	case VK_A <= k && k <= VK_Z, 97 <= c && c <= 122: // Small letters: a-z
-		keyCode = uint16(strings.ToUpper(string(c))[0]) // Keyboard code equals capital letter value
+		keyCode = WORD(strings.ToUpper(string(c))[0]) // Keyboard code equals capital letter value
 		char = rune(strings.ToLower(string(k))[0])
 
 	case k == VK_DELETE, c == 127: // Grave accent '`'
@@ -241,4 +257,25 @@ func multiplyTagInputKey(tagInput TagINPUT, multiplier int) []TagINPUT {
 	}
 
 	return tagInputs
+}
+
+// Process the return value from GetKeyState.
+//
+// If the key state needed is not key down/up but key toggled like caps lock,
+// then pass in true in the second bool parameter
+func getKeyStateBool(state SHORT, checkToggle ...bool) bool {
+	if len(checkToggle) > 0 {
+		return state&1 == 1
+	}
+
+	return state>>15 == 1
+}
+
+// Check whether key is a capital letter
+func IsCapitalLetterEnabled(shiftKeyState, capsLockKeyState bool) bool {
+	if !capsLockKeyState && !shiftKeyState || capsLockKeyState && shiftKeyState {
+		return false
+	}
+
+	return true
 }
