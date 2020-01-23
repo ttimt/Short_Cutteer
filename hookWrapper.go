@@ -274,6 +274,7 @@ func findNonShiftKeyCode(k uint16, c rune, isCapitalLetter ...bool) (keyCode WOR
 
 // Ex: To insert left arrow 5 times, do:
 // multiplyTagInputKey(tagInputLeftArrowDown(), 5)
+//
 func multiplyTagInputKey(tagInput TagINPUT, multiplier int) []TagINPUT {
 	tagInputs := make([]TagINPUT, multiplier)
 

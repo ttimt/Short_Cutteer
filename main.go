@@ -78,10 +78,7 @@ func processHook() {
 			continue
 		}
 
-		// TODO do not add to bufferStr if modifier is added (CTRL and ALT)
-		// TODO user pre-commands can be CTRL, ALT, SHIFT and 1 letter afterwards
-		// TODO if modifier pressed, check one character after that
-		// TODO modifier CTRL or ALT or both have to be enabled before shift can be enabled
+		// User pre-commands can be CTRL, ALT, SHIFT and 1 letter afterwards
 		// User can create shortcut MODIFIER + a key or text commands + tab or space (remove commands)
 		switch char {
 		case '\b':
@@ -90,12 +87,32 @@ func processHook() {
 			}
 		case '\r':
 			bufferStr += windowsNewLine
+			bufferStr = ""
 		case '\t':
-			bufferStr += string(char) // TODO activator tab: check for command
+			if str, ok := userCommands[bufferStr]; ok {
+				// Send input
+				tagInputs := createTagInputs(str)
+				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+				bufferStr = ""
+			}
 		case ' ':
-			bufferStr += string(char) // TODO activator space: check for command
+			if str, ok := userCommands[bufferStr]; ok {
+				// Send input
+				tagInputsBackspace := multiplyTagInputKey(tagInputBackspaceDown(), len(bufferStr)+1)
+				_, _ = SendInput(uint(len(tagInputsBackspace)), (*LPINPUT)(&tagInputsBackspace[0]), int(unsafe.Sizeof(tagInputsBackspace[0])))
+				tagInputs := createTagInputs(str)
+				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+				bufferStr = ""
+			}
 		default:
+			// If buffer full, trim
+			if len(bufferStr) >= maxBufferLen {
+				bufferStr = bufferStr[1:]
+			}
+
 			bufferStr += string(char)
+
+			//  TODO CHECK SHORTCUT KET EXIST EX: CTRL + ALT + F
 		}
 
 		fmt.Println("Buffer string:", bufferStr)

@@ -250,6 +250,8 @@ func GetMessageW(lpMsg LPMSG, hWnd HWND, wMsgFilterMin uint, wMsgFilterMax uint)
 // SendInput Simulate keyboard inputs to the operating system.
 // Result is zero if error.
 //
+// Ex: SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+//
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput
 func SendInput(cInputs uint, pInputs *LPINPUT, cbSize int) (uint, error) {
 

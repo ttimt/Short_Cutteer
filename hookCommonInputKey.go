@@ -84,9 +84,25 @@ func tagInputRightArrowDown() TagINPUT {
 }
 
 // Create tag input for DOWN ARROW key down
-func tagInputDownnArrowDown() TagINPUT {
+func tagInputDownArrowDown() TagINPUT {
 	tagInput := tagInputKeyboard()
 	tagInput.Ki.WVk = VK_DOWN
+
+	return tagInput
+}
+
+// Create tag input for BACKSPACE key
+func tagInputBackspaceDown() TagINPUT {
+	tagInput := tagInputKeyboard()
+	tagInput.Ki.WVk = VK_BACK
+
+	return tagInput
+}
+
+// Create tag input for TAB key
+func tagInputTabDown() TagINPUT {
+	tagInput := tagInputKeyboard()
+	tagInput.Ki.WVk = VK_TAB
 
 	return tagInput
 }
