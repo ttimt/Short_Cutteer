@@ -1,13 +1,21 @@
+// +build windows
+
 package main
 
 import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"unsafe"
 
+	"github.com/ttimt/systray"
+
+	_ "github.com/lxn/walk"
+
 	. "github.com/ttimt/Short_Cutteer/hook/windows"
+	icon "github.com/ttimt/Short_Cutteer/icons"
 )
 
 var hhook HHOOK
@@ -130,13 +138,18 @@ func processHook() {
 }
 
 func defineCommands() {
-	userCommands["/akey"] = "VALUE( object.Key() )"
-	userCommands["/adef"] = "VALUE( object.DefinitionName() )"
+	// To move to UI
+	userCommands["akey"] = "VALUE( object.Key() )"
+	userCommands["adef"] = "VALUE( object.DefinitionName() )"
 
 	maxBufferLen = 5
 }
 
 func main() {
+	// Call systray at beginning of main
+	log.Println("Start tray icon")
+	systray.Run(onReady, onExit)
+
 	log.Println("Start")
 
 	// Load all required DLLs
@@ -158,4 +171,52 @@ func main() {
 	// Unhook Windows keyboard
 	fmt.Println("Removing Windows hook ......")
 	_, _ = UnhookWindowsHookEx(hhook)
+}
+
+func onReady() {
+	systray.SetIcon(icon.Data)
+	systray.SetTitle("a")
+	systray.SetTooltip("quill is life")
+
+	// Add default menu items
+	menuHi := systray.AddMenuItem("Hi", "Hi the", true)
+	systray.AddSeparator()
+	menuQuit := systray.AddMenuItem("Quit", "Quit the", false)
+	menuQuit.SetTooltip("asd")
+
+	quitSignal := false
+	interruptSignal := false
+	processInterruptSignal := make(chan os.Signal)
+	signal.Notify(processInterruptSignal, os.Interrupt)
+
+	for {
+		select {
+		case <-menuQuit.ClickedCh:
+			quitSignal = true
+
+		case <-menuHi.ClickedCh:
+			fmt.Println("Hi")
+			x := exec.Command("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe").Start()
+			fmt.Println(x)
+
+		case <-processInterruptSignal:
+			interruptSignal = true
+			signal.Stop(processInterruptSignal)
+
+		} // END SELECT
+
+		if quitSignal || interruptSignal {
+			break
+		}
+	}
+
+	systray.Quit()
+
+	if interruptSignal {
+		os.Exit(1)
+	}
+}
+
+func onExit() {
+	// clean up
 }
