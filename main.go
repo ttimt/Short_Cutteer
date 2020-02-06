@@ -5,9 +5,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"unsafe"
 
 	"github.com/ttimt/systray"
@@ -18,11 +20,21 @@ import (
 	icon "github.com/ttimt/Short_Cutteer/icons"
 )
 
-var hhook HHOOK
-var currentKeyStrokeSignal = make(chan rune)
-var userCommands = make(map[string]string)
-var maxBufferLen int
-var bufferStr string
+const (
+	htmlFilePath = "html/index.html"
+	httpPort     = 8080
+)
+
+var (
+	hhook                  HHOOK
+	currentKeyStrokeSignal = make(chan rune)
+	userCommands           = make(map[string]string)
+	maxBufferLen           int
+	bufferStr              string
+
+	httpPortStr = ":" + strconv.Itoa(httpPort)
+	httpURL     = "http://localhost" + httpPortStr
+)
 
 func receiveHook() {
 	// Declare a keyboard hook callback function (type HOOKPROC)
@@ -148,7 +160,7 @@ func defineCommands() {
 func main() {
 	// Call systray at beginning of main
 	log.Println("Start tray icon")
-	systray.Run(onReady, onExit)
+	systray.Run(onReady, nil)
 
 	log.Println("Start")
 
@@ -174,15 +186,43 @@ func main() {
 }
 
 func onReady() {
+	// Run the server
+	setupHTTPServer()
+
+	// Setup system tray icon
+	go setupTrayIcon()
+}
+
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Handle web socket
+	_, _ = w.Write([]byte("Hello world!!"))
+}
+
+func setupHTTPServer() {
+	// Setup mux
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, htmlFilePath)
+	})
+
+	mux.HandleFunc("/ws", handleWebSocket)
+
+	// Concurrently run web server
+	go func() {
+		log.Println("Started listening on", httpPort)
+		log.Fatal(http.ListenAndServe(httpPortStr, mux))
+	}()
+}
+
+func setupTrayIcon() {
 	systray.SetIcon(icon.Data)
-	systray.SetTitle("a")
 	systray.SetTooltip("quill is life")
 
 	// Add default menu items
-	menuHi := systray.AddMenuItem("Hi", "Hi the", true)
+	menuHi := systray.AddMenuItem("Hi", "", true)
 	systray.AddSeparator()
-	menuQuit := systray.AddMenuItem("Quit", "Quit the", false)
-	menuQuit.SetTooltip("asd")
+	menuQuit := systray.AddMenuItem("Quit", "", false)
 
 	quitSignal := false
 	interruptSignal := false
@@ -195,8 +235,7 @@ func onReady() {
 			quitSignal = true
 
 		case <-menuHi.ClickedCh:
-			fmt.Println("Hi")
-			x := exec.Command("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe").Start()
+			x := exec.Command("explorer", httpURL).Start()
 			fmt.Println(x)
 
 		case <-processInterruptSignal:
@@ -215,8 +254,4 @@ func onReady() {
 	if interruptSignal {
 		os.Exit(1)
 	}
-}
-
-func onExit() {
-	// clean up
 }
