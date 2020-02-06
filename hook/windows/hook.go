@@ -255,7 +255,8 @@ func GetMessageW(lpMsg LPMSG, hWnd HWND, wMsgFilterMin uint, wMsgFilterMax uint)
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput
 func SendInput(cInputs uint, pInputs *LPINPUT, cbSize int) (uint, error) {
 
-	result, _, err := winDLLUser32_SendInput.Call(uintptr(cInputs), uintptr(unsafe.Pointer(pInputs)), uintptr(cbSize))
+	pInputsPtr := unsafe.Pointer(pInputs)
+	result, _, err := winDLLUser32_SendInput.Call(uintptr(cInputs), uintptr(pInputsPtr), uintptr(cbSize))
 
 	return uint(result), err
 }
