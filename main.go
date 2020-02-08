@@ -10,7 +10,11 @@ import (
 	"os/exec"
 	"os/signal"
 	"strconv"
+	"sync"
+	"time"
 	"unsafe"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/ttimt/systray"
 
@@ -36,7 +40,15 @@ var (
 	httpURL     = "http://localhost" + httpPortStr
 
 	processInterruptSignal = make(chan os.Signal)
+
+	wsUpgrader   = websocket.Upgrader{}
+	wsConnection webSocketConnection
 )
+
+type webSocketConnection struct {
+	mux    sync.Mutex
+	client *websocket.Conn
+}
 
 func receiveHook() {
 	// Declare a keyboard hook callback function (type HOOKPROC)
@@ -180,11 +192,6 @@ func onReady() {
 	setupTrayIcon()
 }
 
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	// Handle web socket
-	_, _ = w.Write([]byte("Hello world!!"))
-}
-
 func setupHTTPServer() {
 	// Setup mux
 	mux := http.NewServeMux()
@@ -200,6 +207,57 @@ func setupHTTPServer() {
 		log.Println("Started listening on", httpPort)
 		log.Fatal(http.ListenAndServe(httpPortStr, mux))
 	}()
+}
+
+// Handle web socket
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Upgrade GET request to a web socket
+	wsConn, err := wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Assign the web socket client
+	wsConnection.client = wsConn
+
+	// Start reading message
+	webSocketReadMessage()
+}
+
+func webSocketReadMessage() {
+	for {
+		// Read message
+		_, m, err := wsConnection.client.ReadMessage()
+
+		if err != nil {
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
+				log.Println("Web socket connection closed:", err)
+			} else {
+				log.Println("Web socket error:", err)
+			}
+
+			break
+		}
+
+		// Read success
+		fmt.Println("Read message succeeded!", m, time.Now().Format(time.Kitchen))
+	}
+
+	// Close the connection at the end if read fails
+	wsConnection.client.Close()
+}
+
+func webSocketWriteMessage(jsonMsg interface{}) {
+	wsConnection.mux.Lock()
+
+	err := wsConnection.client.WriteJSON(jsonMsg)
+	if err != nil {
+		log.Println("Write connection error:", err)
+	}
+
+	log.Println("Write message succeeded:", time.Now().Format(time.Kitchen))
+
+	wsConnection.mux.Unlock()
 }
 
 func setupTrayIcon() {
