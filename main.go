@@ -215,6 +215,10 @@ func setupHTTPServer() {
 		http.ServeFile(w, r, semanticJsFilePath)
 	})
 
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "icons/icon.ico")
+	})
+
 	mux.HandleFunc("/ws", handleWebSocket)
 
 	// Concurrently run web server
