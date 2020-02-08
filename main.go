@@ -27,6 +27,8 @@ import (
 const (
 	mainHtmlFilePath    = "html/index.html"
 	webSocketJsFilePath = "html/webSocket.js"
+	jqueryFilePath      = "node_modules/jquery/dist/jquery.min.js"
+	semanticJsFilePath  = "node_modules/fomantic-ui/dist/semantic.min.js"
 	httpPort            = 8080
 )
 
@@ -201,8 +203,16 @@ func setupHTTPServer() {
 		http.ServeFile(w, r, mainHtmlFilePath)
 	})
 
-	mux.HandleFunc("/webSocket.js", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/dist/webSocket.js", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, webSocketJsFilePath)
+	})
+
+	mux.HandleFunc("/dist/jquery.min.js", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, jqueryFilePath)
+	})
+
+	mux.HandleFunc("/dist/semantic.min.js", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, semanticJsFilePath)
 	})
 
 	mux.HandleFunc("/ws", handleWebSocket)

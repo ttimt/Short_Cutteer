@@ -23,7 +23,7 @@ webSocket.onerror = function () {
 
 // Send data to web socket
 function send(dataToSend) {
-    webSocket.send(JSON.stringify(dataToSend))
+    webSocket.send(JSON.stringify(dataToSend));
 }
 
 // On exit
