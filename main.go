@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -28,7 +29,7 @@ const (
 	mainHtmlFilePath    = "html/index.html"
 	webSocketJsFilePath = "html/webSocket.js"
 	jqueryFilePath      = "node_modules/jquery/dist/jquery.min.js"
-	semanticJsFilePath  = "node_modules/fomantic-ui/dist/semantic.min.js"
+	semanticFilePath    = "node_modules/fomantic-ui/dist/"
 	httpPort            = 8080
 )
 
@@ -51,6 +52,10 @@ var (
 type webSocketConnection struct {
 	mux    sync.Mutex
 	client *websocket.Conn
+}
+
+type httpFileSystem struct {
+	fileSystem http.FileSystem
 }
 
 func receiveHook() {
@@ -211,9 +216,7 @@ func setupHTTPServer() {
 		http.ServeFile(w, r, jqueryFilePath)
 	})
 
-	mux.HandleFunc("/dist/semantic.min.js", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, semanticJsFilePath)
-	})
+	mux.Handle("/dist/", http.StripPrefix("/dist", http.FileServer(httpFileSystem{http.Dir(semanticFilePath)})))
 
 	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "icons/icon.ico")
@@ -329,4 +332,26 @@ func processInterrupted() {
 
 	// Exit
 	os.Exit(1)
+}
+
+func (fs httpFileSystem) Open(name string) (http.File, error) {
+	file, err := fs.fileSystem.Open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	if fileInfo.IsDir() {
+		index := strings.TrimSuffix(name, "/") + "index.html"
+
+		if _, err := fs.fileSystem.Open(index); err != nil {
+			return nil, err
+		}
+	}
+
+	return file, nil
 }
