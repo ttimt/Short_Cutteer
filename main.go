@@ -34,6 +34,8 @@ var (
 
 	httpPortStr = ":" + strconv.Itoa(httpPort)
 	httpURL     = "http://localhost" + httpPortStr
+
+	processInterruptSignal = make(chan os.Signal)
 )
 
 func receiveHook() {
@@ -157,40 +159,25 @@ func defineCommands() {
 	maxBufferLen = 5
 }
 
-func main() {
-	// Call systray at beginning of main
-	log.Println("Start tray icon")
-	systray.Run(onReady, nil)
-
-	log.Println("Start")
-
-	// Load all required DLLs
-	_ = LoadDLLs()
-
-	// Define commands
-	defineCommands()
-
+func init() {
 	// Setup process interrupt signal
-	processInterruptSignal := make(chan os.Signal)
 	signal.Notify(processInterruptSignal, os.Interrupt)
+}
 
-	// Setup hook annd receive message
-	go receiveHook()
-
-	// Wait for process to be interrupted
-	<-processInterruptSignal
-
-	// Unhook Windows keyboard
-	fmt.Println("Removing Windows hook ......")
-	_, _ = UnhookWindowsHookEx(hhook)
+func main() {
+	// Call systray GUI
+	systray.Run(onReady, nil)
 }
 
 func onReady() {
 	// Run the server
 	setupHTTPServer()
 
+	// Start low level keyboard listener
+	setupWindowsHook()
+
 	// Setup system tray icon
-	go setupTrayIcon()
+	setupTrayIcon()
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -217,41 +204,52 @@ func setupHTTPServer() {
 
 func setupTrayIcon() {
 	systray.SetIcon(icon.Data)
-	systray.SetTooltip("quill is life")
+	systray.SetTooltip("Short Cutteer")
 
-	// Add default menu items
-	menuHi := systray.AddMenuItem("Hi", "", true)
+	// Add default menu items in sequence
+	menuLaunchUI := systray.AddMenuItem("Launch UI", "", true)
 	systray.AddSeparator()
 	menuQuit := systray.AddMenuItem("Quit", "", false)
 
-	quitSignal := false
-	interruptSignal := false
-	processInterruptSignal := make(chan os.Signal)
-	signal.Notify(processInterruptSignal, os.Interrupt)
+	go func() {
+		for {
+			select {
+			case <-menuLaunchUI.ClickedCh:
+				x := exec.Command("explorer", httpURL).Start()
+				fmt.Println(x)
 
-	for {
-		select {
-		case <-menuQuit.ClickedCh:
-			quitSignal = true
+			case <-menuQuit.ClickedCh:
+				processInterrupted()
 
-		case <-menuHi.ClickedCh:
-			x := exec.Command("explorer", httpURL).Start()
-			fmt.Println(x)
-
-		case <-processInterruptSignal:
-			interruptSignal = true
-			signal.Stop(processInterruptSignal)
-
-		} // END SELECT
-
-		if quitSignal || interruptSignal {
-			break
+			case <-processInterruptSignal:
+				processInterrupted()
+			}
 		}
-	}
+	}()
+}
 
+func setupWindowsHook() {
+	log.Println("Keyboard listener started ......")
+
+	// Load all required DLLs
+	_ = LoadDLLs()
+
+	// Define commands
+	defineCommands()
+
+	// Setup hook annd receive message
+	go receiveHook()
+}
+
+func processInterrupted() {
+	// Unhook Windows keyboard
+	log.Println("Removing Windows hook ......")
+	_, _ = UnhookWindowsHookEx(hhook)
+
+	// Quit system tray
+	log.Println("Removing sytem tray ......")
 	systray.Quit()
 
-	if interruptSignal {
-		os.Exit(1)
-	}
+	// Exit
+	os.Exit(1)
 }
