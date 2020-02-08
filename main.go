@@ -244,7 +244,7 @@ func webSocketReadMessage() {
 	}
 
 	// Close the connection at the end if read fails
-	wsConnection.client.Close()
+	_ = wsConnection.client.Close()
 }
 
 func webSocketWriteMessage(jsonMsg interface{}) {
