@@ -29,6 +29,13 @@ To be filled ...
 
 ![GitHub](https://img.shields.io/github/license/ttimt/Short_Cutteer?style=for-the-badge)
 
+## Credits
+
+Icons - GNU GPL - 
+[Elegant Themes](ttps://www.elegantthemes.com/blog/freebie-of-the-week/beautiful-flat-icons-for-free)
+
+...
+
 <br>
 
 ---
