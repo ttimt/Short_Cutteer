@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	htmlFilePath = "html/index.html"
-	httpPort     = 8080
+	mainHtmlFilePath    = "html/index.html"
+	webSocketJsFilePath = "html/webSocket.js"
+	httpPort            = 8080
 )
 
 var (
@@ -168,7 +169,7 @@ func defineCommands() {
 	userCommands["akey"] = "VALUE( object.Key() )"
 	userCommands["adef"] = "VALUE( object.DefinitionName() )"
 
-	maxBufferLen = 5
+	maxBufferLen = 4
 }
 
 func init() {
@@ -197,7 +198,11 @@ func setupHTTPServer() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, htmlFilePath)
+		http.ServeFile(w, r, mainHtmlFilePath)
+	})
+
+	mux.HandleFunc("/webSocket.js", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, webSocketJsFilePath)
 	})
 
 	mux.HandleFunc("/ws", handleWebSocket)

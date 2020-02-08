@@ -2,46 +2,13 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8">
-		<link rel="stylesheet" href="node_modules/fomantic-ui/dist/semantic.min.css">
-		<script type="text/javascript" src="node_modules/fomantic-ui/dist/semantic.min.js"></script>
-		<script type="text/javascript" src="node_modules/jquery/dist/jquery.min.js"></script>
+		<link rel="text/html" href="node_modules/fomantic-ui/dist/semantic.min.css">
+		<link rel="script" href="node_modules/jquery/dist/jquery.min.js">
+		<link rel="script" href="node_modules/fomantic-ui/dist/semantic.min.js">
 		<title>Short Cutteer</title>
 	</head>
 	<body>
 		<div id="webSocketStatus">Web socket status: <b>Disconnected</b></div>
-		<script>
-			var webSocketStatusElement = document.getElementById("webSocketStatus");
-			var webSocket = new WebSocket("ws://" + window.location.host + "/ws");
-
-			// Web socket open
-			webSocket.onopen = function () {
-				webSocketStatusElement.innerHTML = "Web socket status: <b>Connected</b>";
-			};
-
-			// Web socket receive message
-			webSocket.onmessage = function () {
-
-			};
-
-			// Web socket close
-			webSocket.onclose = function () {
-				webSocketStatusElement.innerHTML = "Web socket status: <b>Disconnected</b>";
-			};
-
-			// Web socket error
-			webSocket.onerror = function () {
-				webSocketStatusElement.innerHTML = "Web socket status: <b>Error</b>";
-			};
-
-			// Send data to web socket
-			function send(dataToSend) {
-				webSocket.send(JSON.stringify(dataToSend))
-			}
-
-			// On exit
-			window.onbeforeunload = function () {
-				webSocket.close();
-			}
-		</script>
+		<script src="webSocket.js"></script>
 	</body>
 </html>
