@@ -40,43 +40,10 @@ $(".add-command").click(function () {
     $(".ui.modal.add-command-modal").modal("show");
 });
 
-$("#cards-parent").on("click", ".delete", function () {
-    $(this).parents(".ui.card").remove();;
-});
+let cardsParent = $("#cards-parent");
 
-$(".ui.modal.add-command-modal").modal("setting", "transition", "horizontal flip").modal({
-    closable: true,
-    onApprove() {
-        // If title empty, return false
-        let parentContent = $(this).children(".content");
-        let inputHeader = parentContent.find("input[name ='header']");
-        if (inputHeader.val() === "")
-        {
-            inputHeader.focus();
-            return false;
-        }
-
-        // Else call method below
-        submitModalNewCommand(parentContent);
-    },
-    onHide() {
-        $(this).find("form").form("clear");
-    },
-});
-
-$(".ui.modal.add-command-modal .content form").form({
-    on: "blur",
-    inline: false,
-    delay: false,
-    fields: {
-        header: {
-            identifier: "header",
-            rules: [{
-                type: "empty",
-                prompt: "Please enter a title"
-            }]
-        }
-    }
+cardsParent.on("click", ".delete", function () {
+    $(this).parents(".ui.card").remove();
 });
 
 function submitModalNewCommand(parentContent) {
@@ -124,6 +91,46 @@ function submitModalNewCommand(parentContent) {
     if (existingDiv.length) {
         existingDiv.after(newcard);
     } else {
-        $("#cards-parent").append(newcard);
+        cardsParent.append(newcard);
     }
 }
+
+$(".ui.modal.add-command-modal").modal("setting", "transition", "horizontal flip").modal({
+    closable: true,
+    onApprove() {
+        // If title empty, return false
+        let parentContent = $(this).children(".content");
+        let inputHeader = parentContent.find("input[name ='header']");
+        if (inputHeader.val() === "") {
+            inputHeader.focus();
+            return false;
+        }
+
+        // Else call method below
+        submitModalNewCommand(parentContent);
+    },
+    onHide() {
+        $(this).find("form").form("clear");
+    },
+}).keypress(function (e) {
+    if (e.which === 13 && $(this).modal("is active")) {
+        $(this).find(".ok").click();
+        return false;
+    }
+});
+
+$(".ui.modal.add-command-modal .content form").form({
+    on: "blur",
+    inline: false,
+    delay: false,
+    fields: {
+        header: {
+            identifier: "header",
+            rules: [{
+                type: "empty",
+                prompt: "Please enter a title"
+            }]
+        }
+    }
+});
+
