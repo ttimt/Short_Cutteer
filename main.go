@@ -53,6 +53,8 @@ var (
 
 	wsUpgrader   = websocket.Upgrader{}
 	wsConnection webSocketConnection
+
+	t *template.Template
 )
 
 type webSocketConnection struct {
@@ -212,6 +214,26 @@ func defineCommands() {
 func init() {
 	// Setup process interrupt signal
 	signal.Notify(processInterruptSignal, os.Interrupt)
+
+	// Get all template files info
+	templateFiles, err := ioutil.ReadDir(templateFilesPath)
+	if err != nil {
+		panic(err)
+	}
+
+	// Get the name of template files
+	templateFilesName := make([]string, len(templateFiles)+1)
+
+	templateFilesName[0] = htmlFilePath + mainHtmlFile
+	for k := range templateFiles {
+		templateFilesName[k+1] = templateFilesPath + templateFiles[k].Name()
+	}
+
+	// Parse template files
+	t, err = template.ParseFiles(templateFilesName...)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
@@ -234,7 +256,13 @@ func setupHTTPServer() {
 	// Setup mux
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", handleMainHTML)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Server template file
+		err := t.ExecuteTemplate(w, mainHtmlFile, nil)
+		if err != nil {
+			panic(err)
+		}
+	})
 
 	mux.HandleFunc("/dist/jquery.min.js", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, jqueryFilePath)
@@ -258,35 +286,6 @@ func setupHTTPServer() {
 		log.Println("Started listening on", httpPort)
 		log.Fatal(http.ListenAndServe(httpPortStr, mux))
 	}()
-}
-
-// Handle main web page
-func handleMainHTML(w http.ResponseWriter, r *http.Request) {
-	// Get all template files info
-	templateFiles, err := ioutil.ReadDir(templateFilesPath)
-	if err != nil {
-		panic(err)
-	}
-
-	// Get the name of template files
-	templateFilesName := make([]string, len(templateFiles)+1)
-
-	templateFilesName[0] = htmlFilePath + mainHtmlFile
-	for k := range templateFiles {
-		templateFilesName[k+1] = templateFilesPath + templateFiles[k].Name()
-	}
-
-	// Parse template files
-	t, err := template.ParseFiles(templateFilesName...)
-	if err != nil {
-		panic(err)
-	}
-
-	// Server template file
-	err = t.ExecuteTemplate(w, mainHtmlFile, nil)
-	if err != nil {
-		panic(err)
-	}
 }
 
 // Handle web socket
