@@ -1,4 +1,4 @@
-var cardColors = [
+const cardColors = [
     "red",
     "orange",
     "yellow",
@@ -37,16 +37,16 @@ $(".sortable").sortable({
 });
 
 $(".add-command").click(function () {
-    $(".ui.modal.add-command-modal").modal("show")
+    $(".ui.modal.add-command-modal").modal("show");
 });
 
 $("#cards-parent").on("click", ".delete", function () {
-    $(this).parents(".ui.card").remove()
+    $(this).parents(".ui.card").remove();;
 });
 
 $(".ui.modal.add-command-modal").modal("setting", "transition", "horizontal flip").modal({
     closable: true,
-    onApprove: function () {
+    onApprove() {
         // If title empty, return false
         let parentContent = $(this).children(".content");
         let inputHeader = parentContent.find("input[name ='header']");
@@ -59,21 +59,21 @@ $(".ui.modal.add-command-modal").modal("setting", "transition", "horizontal flip
         // Else call method below
         submitModalNewCommand(parentContent);
     },
-    onHide: function () {
+    onHide() {
         $(this).find("form").form("clear");
     },
 });
 
 $(".ui.modal.add-command-modal .content form").form({
-    on: 'blur',
+    on: "blur",
     inline: false,
     delay: false,
     fields: {
         header: {
-            identifier: 'header',
+            identifier: "header",
             rules: [{
-                type: 'empty',
-                prompt: 'Please enter a title'
+                type: "empty",
+                prompt: "Please enter a title"
             }]
         }
     }
@@ -122,8 +122,8 @@ function submitModalNewCommand(parentContent) {
 
     let existingDiv = $("#cards-parent > div").last();
     if (existingDiv.length) {
-        existingDiv.after(newcard)
+        existingDiv.after(newcard);
     } else {
-        $("#cards-parent").append(newcard)
+        $("#cards-parent").append(newcard);
     }
 }
