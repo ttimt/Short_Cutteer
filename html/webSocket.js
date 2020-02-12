@@ -7,8 +7,8 @@ webSocket.onopen = function () {
 };
 
 // Web socket receive message
-webSocket.onmessage = function () {
-
+webSocket.onmessage = function (e) {
+    console.log("Message received:", JSON.parse(e.data));
 };
 
 // Web socket close

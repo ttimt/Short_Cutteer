@@ -14,6 +14,9 @@ const cardColors = [
     "black"
 ];
 
+let cardsParent = $("#cards-parent");
+let modalUi = $(".ui.modal.add-command-modal");
+
 $(".ui.card").hover(
     function () {
         $(this).addClass("raised");
@@ -40,32 +43,30 @@ $(".add-command").click(function () {
     $(".ui.modal.add-command-modal").modal("show");
 });
 
-let cardsParent = $("#cards-parent");
-
 cardsParent.on("click", ".delete", function () {
     $(this).parents(".ui.card").remove();
 });
 
-function submitModalNewCommand(parentContent) {
+function submitModalNewCommand(title, description, command, output) {
     // Create new ui card
     let newcard = "\n" +
         "                        <div class=\"ui " + cardColors[Math.floor(Math.random() * cardColors.length)] + " card\">\n" +
         "                            <div class=\"content\">\n" +
         "                                <div class=\"header\">\n" +
         "                                    <div class=\"ui transparent fluid input header\">\n" +
-        "                                        <input type=\"text\" placeholder=\"Title ...\" value=\"" + parentContent.find("input[name ='header']").val() + "\">\n" +
+        "                                        <input type=\"text\" placeholder=\"Title ...\" value=\"" + title + "\">\n" +
         "                                    </div>\n" +
         "                                </div>\n" +
         "                                <div class=\"meta\">\n" +
         "                                    <div class=\"ui transparent fluid input meta\">\n" +
-        "                                        <input type=\"text\" placeholder=\"Desription ...\" value=\"" + parentContent.find("input[name ='description']").val() + "\">\n" +
+        "                                        <input type=\"text\" placeholder=\"Desription ...\" value=\"" + description + "\">\n" +
         "                                    </div>\n" +
         "                                </div>\n" +
         "                            </div>\n" +
         "                            <div class=\"extra content\">\n" +
         "                                <div class=\"description\">\n" +
         "                                    <div class=\"ui transparent fluid input\">\n" +
-        "                                        <input type=\"text\" placeholder=\"Your command ...\" value=\"" + parentContent.find("input[name ='command']").val() + "\">\n" +
+        "                                        <input type=\"text\" placeholder=\"Your command ...\" value=\"" + command + "\">\n" +
         "                                        <div class=\"ui left pointing label olive\" style=\"display: none\">Keep it short\n" +
         "                                        </div>\n" +
         "                                    </div>\n" +
@@ -74,7 +75,7 @@ function submitModalNewCommand(parentContent) {
         "                            <div class=\"extra content\">\n" +
         "                                <div class=\"description\">\n" +
         "                                    <div class=\"ui transparent fluid input\">\n" +
-        "                                        <input type=\"text\" placeholder=\"Output text ...\" value=\"" + parentContent.find("input[name ='output']").val() + "\">\n" +
+        "                                        <input type=\"text\" placeholder=\"Output text ...\" value=\"" + output + "\">\n" +
         "                                    </div>\n" +
         "                                </div>\n" +
         "                            </div>\n" +
@@ -86,37 +87,41 @@ function submitModalNewCommand(parentContent) {
         "                            </div>\n" +
         "                        </div>";
 
-
     let existingDiv = $("#cards-parent > div").last();
     if (existingDiv.length) {
         existingDiv.after(newcard);
     } else {
         cardsParent.append(newcard);
     }
+
+    if (modalUi.modal("is active")) {
+        modalUi.modal("hide")
+    }
 }
 
-$(".ui.modal.add-command-modal").modal("setting", "transition", "horizontal flip").modal({
+modalUi.modal("setting", "transition", "horizontal flip").modal({
     closable: true,
-    onApprove() {
-        // If title empty, return false
-        let parentContent = $(this).children(".content");
-        let inputHeader = parentContent.find("input[name ='header']");
-        if (inputHeader.val() === "") {
-            inputHeader.focus();
-            return false;
-        }
-
-        // Else call method below
-        submitModalNewCommand(parentContent);
-    },
     onHide() {
         $(this).find("form").form("clear");
     },
-}).keypress(function (e) {
-    if (e.which === 13 && $(this).modal("is active")) {
-        $(this).find(".ok").click();
+});
+
+$("#form-modal").submit(function (e) {
+    e.preventDefault();
+    console.log("in submit");
+    // If title empty, return false
+    let inputTitle = $(this).find("input[name ='title']");
+    if (inputTitle.val() === "") {
+        $(this).focus();
         return false;
     }
+
+    // Else call method below
+    submitModalNewCommand(inputTitle.val(),
+        $(this).find("input[name ='description']").val(),
+        $(this).find("input[name ='command']").val(),
+        $(this).find("input[name ='output']").val()
+    );
 });
 
 $(".ui.modal.add-command-modal .content form").form({
@@ -124,8 +129,8 @@ $(".ui.modal.add-command-modal .content form").form({
     inline: false,
     delay: false,
     fields: {
-        header: {
-            identifier: "header",
+        title: {
+            identifier: "title",
             rules: [{
                 type: "empty",
                 prompt: "Please enter a title"

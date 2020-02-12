@@ -60,6 +60,13 @@ type httpFileSystem struct {
 	fileSystem http.FileSystem
 }
 
+type Command struct {
+	Title       string
+	Description string
+	Command     string
+	Output      string
+}
+
 func receiveHook() {
 	// Declare a keyboard hook callback function (type HOOKPROC)
 	hookCallback := func(code int, wParam WPARAM, lParam LPARAM) LRESULT {
@@ -148,6 +155,15 @@ func processHook() {
 				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
 				bufferStr = ""
 			}
+		case '`':
+			c := Command{
+				Title:       "hey",
+				Description: "description!",
+				Command:     "/akey",
+				Output:      "VALUEOBJECTKEY",
+			}
+			fmt.Println("Sending:", c)
+			webSocketWriteMessage(c)
 		default:
 			// If buffer full, trim
 			if len(bufferStr) >= maxBufferLen {
@@ -281,6 +297,13 @@ func webSocketReadMessage() {
 
 func webSocketWriteMessage(jsonMsg interface{}) {
 	wsConnection.mux.Lock()
+
+	// Check any client exist
+	if wsConnection.client == nil {
+		wsConnection.mux.Unlock()
+		log.Println("Unable to write message: no client exist!")
+		return
+	}
 
 	err := wsConnection.client.WriteJSON(jsonMsg)
 	if err != nil {
