@@ -4,6 +4,8 @@ package main
 
 import (
 	"fmt"
+	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -26,13 +28,15 @@ import (
 )
 
 const (
-	mainHtmlFilePath    = "html/index.html"
-	webSocketJsFilePath = "html/webSocket.js"
-	mainJsFilePath      = "html/main.js"
-	jqueryFilePath      = "node_modules/jquery/dist/jquery.min.js"
-	jqueryUIFilePath    = "node_modules/jquery-ui-dist/jquery-ui.min.js"
-	semanticFilePath    = "node_modules/fomantic-ui/dist/"
-	httpPort            = 8080
+	htmlFilePath     = "html/"
+	jqueryFilePath   = "node_modules/jquery/dist/jquery.min.js"
+	jqueryUIFilePath = "node_modules/jquery-ui-dist/jquery-ui.min.js"
+	semanticFilePath = "node_modules/fomantic-ui/dist/"
+
+	mainHtmlFile      = "index.html"
+	templateFilesPath = "html/template/"
+
+	httpPort = 8080
 )
 
 var (
@@ -230,17 +234,7 @@ func setupHTTPServer() {
 	// Setup mux
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, mainHtmlFilePath)
-	})
-
-	mux.HandleFunc("/dist/webSocket.js", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, webSocketJsFilePath)
-	})
-
-	mux.HandleFunc("/dist/main.js", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, mainJsFilePath)
-	})
+	mux.HandleFunc("/", handleMainHTML)
 
 	mux.HandleFunc("/dist/jquery.min.js", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, jqueryFilePath)
@@ -250,6 +244,7 @@ func setupHTTPServer() {
 		http.ServeFile(w, r, jqueryUIFilePath)
 	})
 
+	mux.Handle("/html/", http.StripPrefix("/html", http.FileServer(httpFileSystem{http.Dir(htmlFilePath)})))
 	mux.Handle("/dist/", http.StripPrefix("/dist", http.FileServer(httpFileSystem{http.Dir(semanticFilePath)})))
 
 	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
@@ -263,6 +258,35 @@ func setupHTTPServer() {
 		log.Println("Started listening on", httpPort)
 		log.Fatal(http.ListenAndServe(httpPortStr, mux))
 	}()
+}
+
+// Handle main web page
+func handleMainHTML(w http.ResponseWriter, r *http.Request) {
+	// Get all template files info
+	templateFiles, err := ioutil.ReadDir(templateFilesPath)
+	if err != nil {
+		panic(err)
+	}
+
+	// Get the name of template files
+	templateFilesName := make([]string, len(templateFiles)+1)
+
+	templateFilesName[0] = htmlFilePath + mainHtmlFile
+	for k := range templateFiles {
+		templateFilesName[k+1] = templateFilesPath + templateFiles[k].Name()
+	}
+
+	// Parse template files
+	t, err := template.ParseFiles(templateFilesName...)
+	if err != nil {
+		panic(err)
+	}
+
+	// Server template file
+	err = t.ExecuteTemplate(w, mainHtmlFile, nil)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // Handle web socket
@@ -387,7 +411,7 @@ func (fs httpFileSystem) Open(name string) (http.File, error) {
 	}
 
 	if fileInfo.IsDir() {
-		index := strings.TrimSuffix(name, "/") + "index.html"
+		index := strings.TrimSuffix(name, "/") + "/index.html"
 
 		if _, err := fs.fileSystem.Open(index); err != nil {
 			return nil, err
