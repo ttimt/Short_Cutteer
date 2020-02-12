@@ -8,7 +8,11 @@ webSocket.onopen = function () {
 
 // Web socket receive message
 webSocket.onmessage = function (e) {
-    console.log("Message received:", JSON.parse(e.data));
+    let data = JSON.parse(e.data);
+    console.log("Message received:", data);
+    data.forEach(d => {
+       submitModalNewCommand(d.Title, d.Description, d.Command, d.Output)
+    });
 };
 
 // Web socket close

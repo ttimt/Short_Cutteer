@@ -16,6 +16,7 @@ const cardColors = [
 
 let cardsParent = $("#cards-parent");
 let modalUi = $(".ui.modal.add-command-modal");
+let modalForm = $(".ui.modal.add-command-modal #form-modal");
 
 $(".ui.card").hover(
     function () {
@@ -95,39 +96,49 @@ function submitModalNewCommand(title, description, command, output) {
     }
 
     if (modalUi.modal("is active")) {
-        modalUi.modal("hide")
+        modalUi.modal("hide");
     }
 }
 
 modalUi.modal("setting", "transition", "horizontal flip").modal({
     closable: true,
-    onHide() {
-        $(this).find("form").form("clear");
+    onApprove() {
+      return false;
     },
+    onShow() {
+        modalForm.form("clear");
+    }
 });
 
-$("#form-modal").submit(function (e) {
-    e.preventDefault();
-    console.log("in submit");
+function validateModal(form) {
     // If title empty, return false
-    let inputTitle = $(this).find("input[name ='title']");
+    let inputTitle = form.find("input[name ='title']");
     if (inputTitle.val() === "") {
-        $(this).focus();
+        form.focus();
         return false;
     }
 
     // Else call method below
     submitModalNewCommand(inputTitle.val(),
-        $(this).find("input[name ='description']").val(),
-        $(this).find("input[name ='command']").val(),
-        $(this).find("input[name ='output']").val()
+        form.find("input[name ='description']").val(),
+        form.find("input[name ='command']").val(),
+        form.find("input[name ='output']").val()
     );
+}
+
+$("#form-modal").submit(function (e) {
+    validateModal($(this));
+
+    return false;
 });
 
-$(".ui.modal.add-command-modal .content form").form({
+modalUi.find(".ok").click( function () {
+    validateModal(modalForm);
+});
+
+modalForm.form({
     on: "blur",
     inline: false,
-    delay: false,
     fields: {
         title: {
             identifier: "title",

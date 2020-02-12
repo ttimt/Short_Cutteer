@@ -156,12 +156,20 @@ func processHook() {
 				bufferStr = ""
 			}
 		case '`':
-			c := Command{
+			var c []Command
+			c = append(c, Command{
 				Title:       "hey",
 				Description: "description!",
 				Command:     "/akey",
 				Output:      "VALUEOBJECTKEY",
-			}
+			})
+			c = append(c, Command{
+				Title:       "he nonono",
+				Description: "description!!!!!",
+				Command:     "/adef",
+				Output:      "VALUE OBJECT DEF",
+			})
+
 			fmt.Println("Sending:", c)
 			webSocketWriteMessage(c)
 		default:
