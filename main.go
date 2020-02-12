@@ -30,6 +30,7 @@ const (
 	webSocketJsFilePath = "html/webSocket.js"
 	mainJsFilePath      = "html/main.js"
 	jqueryFilePath      = "node_modules/jquery/dist/jquery.min.js"
+	jqueryUIFilePath    = "node_modules/jquery-ui-dist/jquery-ui.min.js"
 	semanticFilePath    = "node_modules/fomantic-ui/dist/"
 	httpPort            = 8080
 )
@@ -219,6 +220,10 @@ func setupHTTPServer() {
 
 	mux.HandleFunc("/dist/jquery.min.js", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, jqueryFilePath)
+	})
+
+	mux.HandleFunc("/dist/jquery-ui.min.js", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, jqueryUIFilePath)
 	})
 
 	mux.Handle("/dist/", http.StripPrefix("/dist", http.FileServer(httpFileSystem{http.Dir(semanticFilePath)})))

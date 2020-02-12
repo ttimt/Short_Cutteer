@@ -4,8 +4,13 @@
         <meta charset="UTF-8">
         <link rel=stylesheet href="dist/semantic.min.css">
         <style type="text/css">
-            .main.container {
+            .ui.main.container {
                 margin-top: 3em;
+                width: 80%;
+            }
+
+            .ui.transparent.fluid.input.header {
+                line-height: 1.2857em;
             }
         </style>
         <title>Short Cutteer</title>
@@ -33,126 +38,130 @@
                     </div>
                 </div>
             </div>
-            <div class="ui bottom attached segment">
-                <div class="ui cards">
-                    <div class="ui red card">
-                        <div class="content">
-                            <div class="header">Object Key</div>
-                            <div class="meta">Used in application</div>
-                        </div>
-                        <div class="extra content">
-                            <div class="description">
-                                <div class="ui transparent fluid input">
-                                    <input type="text" placeholder="Your command ...">
-                                    <div class="ui left pointing label olive" style="display: none">Keep it short</div>
+            <div class="ui bottom center aligned horizontal segments">
+                <div class="ui segment compact">
+                    <button class="circular ui icon button blue add-command" data-tooltip="Create new command">
+                        <i class="icon plus"></i>
+                    </button>
+                </div>
+                <div class="ui segment">
+                    <div class="ui cards sortable" id="cards-parent">
+                        <div class="ui red card">
+                            <div class="content">
+                                <div class="header">
+                                    <div class="ui transparent fluid input header">
+                                        <input type="text" placeholder="Title ...">
+                                    </div>
+                                </div>
+                                <div class="meta">
+                                    <div class="ui transparent fluid input meta">
+                                        <input type="text" placeholder="Description ...">
+                                    </div>
                                 </div>
                             </div>
-                            </div>
                             <div class="extra content">
-                            <div class="description">
-                                <div class="ui transparent fluid input">
-                                    <div class="ui form">
-                                        <div class="field">
-                                            <textarea placeholder="Output text ..."></textarea>
+                                <div class="description">
+                                    <div class="ui transparent fluid input">
+                                        <input type="text" placeholder="Your command ...">
+                                        <div class="ui left pointing label olive" style="display: none">Keep it short
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            </div>
-                        <div class="extra content">
-                            <div class="ui two buttons">
-                                <div class="ui basic grey button">Disable</div>
-                                <div class="ui basic red button">Delete</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="ui purple card">
-                        <div class="content">
-                            <div class="header">Object Def</div>
-                            <div class="meta">Used in application</div>
-                        </div>
-                        <div class="extra content">
-                            <div class="description">
-                                <div class="ui transparent fluid input">
-                                    <input type="text" placeholder="Your command ...">
-                                    <div class="ui left pointing label olive" style="display: none">Keep it short</div>
+                            <div class="extra content">
+                                <div class="description">
+                                    <div class="ui transparent fluid input">
+                                        <input type="text" placeholder="Output text ...">
+                                    </div>
                                 </div>
-                            </div>
                             </div>
                             <div class="extra content">
-                            <div class="description">
-                                <div class="ui transparent fluid input">
-                                    <input type="text" placeholder="Output text ...">
+                                <div class="ui two buttons">
+                                    <div class="ui basic grey button disable">Disable</div>
+                                    <div class="ui basic red button delete">Delete</div>
                                 </div>
                             </div>
-                            </div>
-                        <div class="extra content">
-                            <div class="ui two buttons">
-                                <div class="ui basic grey button">Disable</div>
-                                <div class="ui basic red button">Delete</div>
-                            </div>
                         </div>
-                    </div>
-                    <div class="ui yellow card">
-                        <div class="content">
-                            <div class="header">Something</div>
-                            <div class="meta">Jira</div>
-                        </div>
-                        <div class="extra content">
-                            <div class="description">
-                                <div class="ui transparent fluid input">
-                                    <input type="text" placeholder="Your command ...">
-                                    <div class="ui left pointing label olive" style="display: none">Keep it short</div>
+                        <div class="ui yellow card">
+                            <div class="content">
+                                <div class="header">
+                                    <div class="ui transparent fluid input header">
+                                        <input type="text" placeholder="Title ...">
+                                    </div>
                                 </div>
-                            </div>
+                                <div class="meta">
+                                    <div class="ui transparent fluid input meta">
+                                        <input type="text" placeholder="Description ...">
+                                    </div>
+                                </div>
                             </div>
                             <div class="extra content">
-                            <div class="description">
-                                <div class="ui transparent fluid input">
-                                    <input type="text" placeholder="Output text ...">
+                                <div class="description">
+                                    <div class="ui transparent fluid input">
+                                        <input type="text" placeholder="Your command ...">
+                                        <div class="ui left pointing label olive" style="display: none">Keep it short
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            </div>
-                        <div class="extra content">
-                            <div class="ui two buttons">
-                                <div class="ui basic grey button">Disable</div>
-                                <div class="ui basic red button">Delete</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="ui olive card">
-                        <div class="content">
-                            <div class="header">Greet</div>
-                            <div class="meta">Emails</div>
-                        </div>
-                        <div class="extra content">
-                            <div class="description">
-                                <div class="ui transparent fluid input">
-                                    <input type="text" placeholder="Your command ...">
-                                    <div class="ui left pointing label olive" style="display: none">Keep it short</div>
-                                </div>
-                            </div>
                             </div>
                             <div class="extra content">
-                            <div class="description">
-                                <div class="ui transparent fluid input">
-                                    <input type="text" placeholder="Output text ...">
+                                <div class="description">
+                                    <div class="ui transparent fluid input">
+                                        <input type="text" placeholder="Output text ...">
+                                    </div>
                                 </div>
                             </div>
-                            </div>
-                        <div class="extra content">
-                            <div class="ui two buttons">
-                                <div class="ui basic grey button">Disable</div>
-                                <div class="ui basic red button">Delete</div>
+                            <div class="extra content">
+                                <div class="ui two buttons">
+                                    <div class="ui basic grey button disable">Disable</div>
+                                    <div class="ui basic red button delete">Delete</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        </div>
+
+        <div class="ui modal add-command-modal">
+            <div class="header">New command</div>
+            <div class="content">
+                <form class="ui form">
+                    <div class="ui field">
+                        <label>Title</label>
+                        <input type="text" name="header" placeholder="Enter title...">
+                    </div>
+                    <div class="ui divider"></div>
+                    <div class="ui field">
+                        <label>Description</label>
+                        <input type="text" name="description" placeholder="Enter description...">
+                    </div>
+                    <div class="ui divider"></div>
+                    <div class="ui field">
+                        <label>Command</label>
+                        <input type="text" name="command" placeholder="Enter command. Ex: /key">
+                    </div>
+                    <div class="ui divider"></div>
+                    <div class="ui field">
+                        <label>Output text</label>
+                        <input type="text" name="output" placeholder="Enter output text. Ex: VALUE( object.Key() )">
+                    </div>
+                </form>
+            </div>
+            <div class="actions">
+                <div class="ui black cancel button">
+                    Cancel
+                </div>
+                <div class="ui right ok labeled icon button green">
+                    Save <i class="checkmark icon"></i>
+                </div>
+            </div>
+        </div>
 
 
         <script type="text/javascript" src="dist/jquery.min.js"></script>
+        <script type="text/javascript" src="dist/jquery-ui.min.js"></script>
         <script type="text/javascript" src="dist/semantic.min.js"></script>
         <script type="text/javascript" src="dist/webSocket.js"></script>
         <script type="text/javascript" src="dist/main.js"></script>
