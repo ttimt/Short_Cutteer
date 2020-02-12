@@ -1,3 +1,5 @@
+/* global submitModalNewCommand */
+
 const webSocketStatusElement = document.getElementById("webSocketStatus");
 const webSocket = new WebSocket("ws://" + window.location.host + "/ws");
 
@@ -9,9 +11,9 @@ webSocket.onopen = function () {
 // Web socket receive message
 webSocket.onmessage = function (e) {
     let data = JSON.parse(e.data);
-    console.log("Message received:", data);
-    data.forEach(d => {
-       submitModalNewCommand(d.Title, d.Description, d.Command, d.Output)
+
+    data.forEach((d) => {
+        submitModalNewCommand(d.Title, d.Description, d.Command, d.Output);
     });
 };
 

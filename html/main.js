@@ -103,7 +103,7 @@ function submitModalNewCommand(title, description, command, output) {
 modalUi.modal("setting", "transition", "horizontal flip").modal({
     closable: true,
     onApprove() {
-      return false;
+        return false;
     },
     onShow() {
         modalForm.form("clear");
@@ -132,7 +132,7 @@ $("#form-modal").submit(function (e) {
     return false;
 });
 
-modalUi.find(".ok").click( function () {
+modalUi.find(".ok").click(function () {
     validateModal(modalForm);
 });
 
