@@ -17,10 +17,12 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/gorilla/websocket"
 
 	"github.com/ttimt/systray"
 
+	_ "github.com/HouzuoGuo/tiedot/db"
 	_ "github.com/lxn/walk"
 
 	. "github.com/ttimt/Short_Cutteer/hook/windows"
@@ -35,6 +37,8 @@ const (
 
 	mainHtmlFile      = "index.html"
 	templateFilesPath = "html/template/"
+
+	dbPath = "db"
 
 	httpPort = 8080
 )
@@ -53,6 +57,8 @@ var (
 
 	wsUpgrader   = websocket.Upgrader{}
 	wsConnection webSocketConnection
+
+	myDB *db.DB
 
 	t *template.Template
 )
@@ -234,6 +240,13 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	// Load DB
+	// Create or open the database
+	myDB, err = db.OpenDB(dbPath)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
@@ -393,6 +406,12 @@ func processInterrupted() {
 	// Quit system tray
 	log.Println("Removing sytem tray ......")
 	systray.Quit()
+
+	// Close db
+	err := myDB.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	// Exit
 	os.Exit(1)
