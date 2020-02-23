@@ -115,6 +115,31 @@ modalUi.modal("setting", "transition", "horizontal flip").modal({
     }
 });
 
+function sendCommand(kind, operation, data) {
+    let obj = {
+        kind: kind,
+        operation: operation,
+        data: data
+    };
+
+    send(obj);
+}
+
+function sendNewCommand(title, description, command, output) {
+    let data = JSON.stringify({
+        title,
+        description,
+        command,
+        output
+    });
+
+    sendCommand(messageKindCommand, messageOperationWrite, data)
+}
+
+function sendDeleteCommand(title) {
+    sendCommand(messageKindCommand, messageOperationDelete, title);
+}
+
 function validateModal(form) {
     // If title empty, return false
     let inputTitle = form.find("input[name ='title']").val();
@@ -130,31 +155,6 @@ function validateModal(form) {
 
     sendNewCommand(inputTitle, inputDescription, inputCommand, inputOutput);
     submitModalNewCommand(inputTitle, inputDescription, inputCommand, inputOutput);
-}
-
-function sendDeleteCommand(title) {
-    sendCommand(messageKindCommand, messageOperationDelete, title)
-}
-
-function sendNewCommand(title, description, command, output) {
-    let data = JSON.stringify({
-        title: title,
-        description: description,
-        command: command,
-        output: output
-    });
-
-    sendCommand(messageKindCommand, messageOperationWrite, data)
-}
-
-function sendCommand(kind, operation, data) {
-    let obj = {
-        kind: kind,
-        operation: operation,
-        data: data
-    };
-
-    send(obj);
 }
 
 $("#form-modal").submit(function () {

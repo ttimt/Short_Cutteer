@@ -1,4 +1,6 @@
 /* global submitModalNewCommand */
+/* global messageKindCommand */
+/* global messageOperationWrite */
 
 let webSocket;
 
@@ -41,6 +43,6 @@ $(document).ready(function () {
 });
 
 // Send data to web socket
-function send(dataToSend) {
+let send = function (dataToSend) {
     webSocket.send(JSON.stringify(dataToSend));
-}
+};
