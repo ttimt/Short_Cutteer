@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -59,7 +60,8 @@ var (
 	wsUpgrader   = websocket.Upgrader{}
 	wsConnection webSocketConnection
 
-	myDB *db.DB
+	myDB     *db.DB
+	commands *db.Col
 
 	t *template.Template
 )
@@ -74,10 +76,10 @@ type httpFileSystem struct {
 }
 
 type Command struct {
-	Title       string
-	Description string
-	Command     string
-	Output      string
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Command     string `json:"command"`
+	Output      string `json:"output"`
 }
 
 func receiveHook() {
@@ -168,23 +170,6 @@ func processHook() {
 				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
 				bufferStr = ""
 			}
-		case '`':
-			var c []Command
-			c = append(c, Command{
-				Title:       "hey",
-				Description: "description!",
-				Command:     "/akey",
-				Output:      "VALUEOBJECTKEY",
-			})
-			c = append(c, Command{
-				Title:       "he nonono",
-				Description: "description!!!!!",
-				Command:     "/adef",
-				Output:      "VALUE OBJECT DEF",
-			})
-
-			fmt.Println("Sending:", c)
-			webSocketWriteMessage(c)
 		default:
 			// If buffer full, trim
 			if len(bufferStr) >= maxBufferLen {
@@ -265,8 +250,46 @@ func onReady() {
 	// Setup system tray icon
 	setupTrayIcon()
 
-	// Test DB
-	testDB()
+	// Setup DB
+	setupDB()
+}
+
+func setupDB() {
+	// Find collections: Commands
+	myDB.Drop("Commands")
+	commands = myDB.ForceUse("Commands")
+	if err := commands.Index([]string{"title", "description", "command", "output"}); err != nil {
+		panic(err)
+	}
+
+	commands.Insert(map[string]interface{}{
+		"title":       "hey",
+		"description": "description!",
+		"command":     "/akey",
+		"output":      "VALUEOBJECTKEY",
+	})
+
+	commands.Insert(map[string]interface{}{
+		"title":       "he nonono",
+		"description": "description!!!!!",
+		"command":     "/adef",
+		"output":      "VALUE OBJECT DEF",
+	})
+}
+
+func readDB() {
+	var cs []Command
+
+	// Read documents
+	commands.ForEachDoc(func(id int, doc []byte) (moveOn bool) {
+		var c Command
+		_ = json.Unmarshal(doc, &c)
+		cs = append(cs, c)
+
+		return true
+	})
+
+	webSocketWriteMessage(cs)
 }
 
 func testDB() {
@@ -385,6 +408,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Assign the web socket client
 	wsConnection.client = wsConn
+
+	// Read from DB
+	readDB()
 
 	// Start reading message
 	webSocketReadMessage()
