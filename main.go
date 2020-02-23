@@ -49,7 +49,8 @@ const (
 var (
 	hhook                  HHOOK
 	currentKeyStrokeSignal = make(chan rune)
-	userCommands           = make(map[string]string)
+	userCommands           = make(map[string]*Command)
+	commands               []Command
 	maxBufferLen           int
 	bufferStr              string
 
@@ -61,8 +62,8 @@ var (
 	wsUpgrader   = websocket.Upgrader{}
 	wsConnection webSocketConnection
 
-	myDB     *db.DB
-	commands *db.Col
+	myDB               *db.DB
+	commandsCollection *db.Col
 
 	t *template.Template
 )
@@ -151,8 +152,8 @@ func processHook() {
 			continue
 		}
 
-		// User pre-commands can be CTRL, ALT, SHIFT and 1 letter afterwards
-		// User can create shortcut MODIFIER + a key or text commands + tab or space (remove commands)
+		// User pre-commandsCollection can be CTRL, ALT, SHIFT and 1 letter afterwards
+		// User can create shortcut MODIFIER + a key or text commandsCollection + tab or space (remove commandsCollection)
 		switch char {
 		case '\b':
 			if len(bufferStr) > 0 {
@@ -164,7 +165,7 @@ func processHook() {
 		case '\t':
 			if str, ok := userCommands[bufferStr]; ok {
 				// Send input
-				tagInputs := createTagInputs(str)
+				tagInputs := createTagInputs(str.Output)
 				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
 				bufferStr = ""
 			}
@@ -173,8 +174,10 @@ func processHook() {
 				// Send input
 				tagInputsBackspace := multiplyTagInputKey(tagInputBackspaceDown(), len(bufferStr)+1)
 				_, _ = SendInput(uint(len(tagInputsBackspace)), (*LPINPUT)(&tagInputsBackspace[0]), int(unsafe.Sizeof(tagInputsBackspace[0])))
-				tagInputs := createTagInputs(str)
+
+				tagInputs := createTagInputs(str.Output)
 				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+
 				bufferStr = ""
 			}
 		default:
@@ -202,12 +205,13 @@ func processHook() {
 	}
 }
 
-func defineCommands() {
-	// To move to UI
-	userCommands["akey"] = "VALUE( object.Key() )"
-	userCommands["adef"] = "VALUE( object.DefinitionName() )"
+func updateUserCommand(c Command) {
+	commands = append(commands, c)
+	userCommands[c.Command] = &c
 
-	maxBufferLen = 4
+	if len(c.Command) > maxBufferLen {
+		maxBufferLen = len(c.Command)
+	}
 }
 
 func init() {
@@ -308,8 +312,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Assign the web socket client
 	wsConnection.client = wsConn
 
-	// Read from DB
-	readDB()
+	// Send commandsCollection to UI
+	webSocketWriteMessage(commands)
 
 	// Start reading message
 	webSocketReadMessage()
@@ -331,8 +335,8 @@ func webSocketReadMessage() {
 			break
 		}
 
-		// Read success
-		// fmt.Println("Read message succeeded!", string(m), time.Now().Format(time.Kitchen))
+		// Read success - Add new user commandsCollection
+		updateUserCommand(c)
 		writeCommandToDB(c.Title, c.Description, c.Command, c.Output)
 	}
 
@@ -391,9 +395,6 @@ func setupWindowsHook() {
 
 	// Load all required DLLs
 	_ = LoadDLLs()
-
-	// Define commands
-	defineCommands()
 
 	// Setup hook annd receive message
 	go receiveHook()

@@ -21,33 +21,33 @@ func setupDB() {
 	}
 
 	// Use collection: Commands
-	commands = myDB.Use(dbCollectionCommand)
+	commandsCollection = myDB.Use(dbCollectionCommand)
 
 	// Create indexing "title" for querying
 	if !myDB.ColExists(dbCollectionCommand) {
-		if err := commands.Index([]string{dbCollectionCommandFieldTitle}); err != nil {
+		if err := commandsCollection.Index([]string{dbCollectionCommandFieldTitle}); err != nil {
 			panic(err)
 		}
 	}
+
+	// Read from DB
+	readDB()
 }
 
 func readDB() {
-	var cs []Command
 	var c Command
 
 	// Read documents
-	commands.ForEachDoc(func(id int, doc []byte) (moveOn bool) {
+	commandsCollection.ForEachDoc(func(id int, doc []byte) (moveOn bool) {
 		_ = json.Unmarshal(doc, &c)
-		cs = append(cs, c)
+		updateUserCommand(c)
 
 		return true
 	})
-
-	webSocketWriteMessage(cs)
 }
 
 func writeDB(data map[string]interface{}) {
-	if _, err := commands.Insert(data); err != nil {
+	if _, err := commandsCollection.Insert(data); err != nil {
 		panic(err)
 	}
 }
@@ -67,12 +67,12 @@ func selectCommandWithTitle(title string) {
 
 	_ = json.Unmarshal([]byte(`[{"eq:" "`+title+`", "in": ["`+dbCollectionCommandFieldTitle+`"]}]`), &query)
 
-	if err := db.EvalQuery(query, commands, &queryResult); err != nil {
+	if err := db.EvalQuery(query, commandsCollection, &queryResult); err != nil {
 		panic(err)
 	}
 
 	for id := range queryResult {
-		if err := commands.Delete(id); dberr.Type(err) == dberr.ErrorNoDoc {
+		if err := commandsCollection.Delete(id); dberr.Type(err) == dberr.ErrorNoDoc {
 			fmt.Println("The document was already deleted")
 		} else if err != nil {
 			panic(err)
