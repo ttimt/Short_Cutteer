@@ -45,6 +45,7 @@ $(".add-command").click(function () {
 });
 
 cardsParent.on("click", ".delete", function () {
+    sendDeleteCommand($(this).parents(".ui.card").find(".header input").val());
     $(this).parents(".ui.card").remove();
 });
 
@@ -127,16 +128,26 @@ function validateModal(form) {
     submitModalNewCommand(inputTitle, inputDescription, inputCommand, inputOutput);
 }
 
+function sendDeleteCommand(title) {
+    sendCommand("command", "delete", title)
+}
+
 function sendNewCommand(title, description, command, output) {
+    let data = JSON.stringify({
+        title: title,
+        description: description,
+        command: command,
+        output: output
+    });
+
+    sendCommand("command", "write", data)
+}
+
+function sendCommand(kind, operation, data) {
     let obj = {
-        kind: "command",
-        operation: "write",
-        data: JSON.stringify({
-            title: title,
-            description: description,
-            command: command,
-            output: output
-        })
+        kind: kind,
+        operation: operation,
+        data: data
     };
 
     send(obj);

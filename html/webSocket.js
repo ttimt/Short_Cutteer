@@ -15,8 +15,6 @@ $(document).ready(function () {
     webSocket.onmessage = function (e) {
         let data = JSON.parse(e.data);
 
-        console.log(data.kind);
-        console.log(data.operation);
         if (data.kind === "command") {
             if (data.operation === "write") {
                 data.data.forEach((d) => {

@@ -56,7 +56,6 @@ var (
 	hhook                  HHOOK
 	currentKeyStrokeSignal = make(chan rune)
 	userCommands           = make(map[string]*Command)
-	commands               []Command
 	maxBufferLen           int
 	bufferStr              string
 
@@ -212,7 +211,6 @@ func processHook() {
 }
 
 func updateUserCommand(c Command) {
-	commands = append(commands, c)
 	userCommands[c.Command] = &c
 
 	if len(c.Command) > maxBufferLen {
@@ -319,7 +317,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	wsConnection.client = wsConn
 
 	// Send commandsCollection to UI
-	webSocketWriteMessage(messageKindCommand, messageOperationWrite, commands)
+	webSocketWriteMessage(messageKindCommand, messageOperationWrite, getAllCommands())
 
 	// Start reading message
 	webSocketReadMessage()
@@ -349,15 +347,31 @@ func webSocketReadMessage() {
 	_ = wsConnection.client.Close()
 }
 
+func getAllCommands() *[]Command {
+	commands := make([]Command, len(userCommands))
+
+	i := 0
+	for k := range userCommands {
+		commands[i] = *userCommands[k]
+		i++
+	}
+
+	return &commands
+}
+
 func processIncomingMessage(m Message) {
-	// Add new user commandsCollection
+	dataStr := m.Data.(string)
+
 	if m.Kind == messageKindCommand {
-		if m.Operation == messageOperationWrite {
+		switch m.Operation {
+		case messageOperationWrite:
 			var c Command
-			_ = json.Unmarshal([]byte(m.Data.(string)), &c)
+			_ = json.Unmarshal([]byte(dataStr), &c)
 
 			updateUserCommand(c)
 			writeCommandToDB(c.Title, c.Description, c.Command, c.Output)
+		case messageOperationDelete:
+			deleteCommandFromDB(dataStr)
 		}
 	}
 }

@@ -31,10 +31,10 @@ func setupDB() {
 	}
 
 	// Read from DB
-	readDB()
+	readAndImportFromDB()
 }
 
-func readDB() {
+func readAndImportFromDB() {
 	var c Command
 
 	// Read documents
@@ -61,23 +61,36 @@ func writeCommandToDB(title, description, command, output string) {
 	})
 }
 
-func selectCommandWithTitle(title string) {
-	var query interface{}
-	var queryResult map[int]struct{}
+func deleteCommandFromDB(title string) {
+	// Get the command with the title
+	queryResult := selectCommandWithTitle(title)
 
-	_ = json.Unmarshal([]byte(`[{"eq:" "`+title+`", "in": ["`+dbCollectionCommandFieldTitle+`"]}]`), &query)
+	for id := range queryResult {
+		toDelete, _ := commandsCollection.Read(id)
+		command := toDelete[dbCollectionCommandFieldTitle].(string)
+
+		if err := commandsCollection.Delete(id); dberr.Type(err) == dberr.ErrorNoDoc {
+			fmt.Println("The document was already deleted")
+		} else if err != nil {
+			panic(err)
+		} else {
+			// Delete from in memory struct userCommands
+			delete(userCommands, command)
+		}
+	}
+}
+
+func selectCommandWithTitle(title string) map[int]struct{} {
+	var query interface{}
+	queryResult := make(map[int]struct{})
+
+	_ = json.Unmarshal([]byte(`[{"eq": "`+title+`", "in": ["`+dbCollectionCommandFieldTitle+`"]}]`), &query)
 
 	if err := db.EvalQuery(query, commandsCollection, &queryResult); err != nil {
 		panic(err)
 	}
 
-	for id := range queryResult {
-		if err := commandsCollection.Delete(id); dberr.Type(err) == dberr.ErrorNoDoc {
-			fmt.Println("The document was already deleted")
-		} else if err != nil {
-			panic(err)
-		}
-	}
+	return queryResult
 }
 
 func testDB() {
