@@ -1,41 +1,113 @@
+// +build windows
+
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"html/template"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 	"unsafe"
+
+	"github.com/HouzuoGuo/tiedot/db"
+	"github.com/gorilla/websocket"
+
+	"github.com/ttimt/systray"
+
+	_ "github.com/HouzuoGuo/tiedot/db"
+	_ "github.com/lxn/walk"
+
+	. "github.com/ttimt/Short_Cutteer/hook/windows"
+	icon "github.com/ttimt/Short_Cutteer/icons"
 )
 
-var hhook HHOOK
-var currentKeyStrokeSignal = make(chan rune)
-var userCommands = make(map[string]string)
-var bufferCommand string
-var bufferLen int
-var maxBufferLen int
-var commandReady bool
+const (
+	htmlFilePath     = "html/"
+	jqueryFilePath   = "node_modules/jquery/dist/jquery.min.js"
+	jqueryUIFilePath = "node_modules/jquery-ui-dist/jquery-ui.min.js"
+	semanticFilePath = "node_modules/fomantic-ui/dist/"
+
+	mainHtmlFile      = "index.html"
+	templateFilesPath = "html/template/"
+
+	dbPath = "db"
+
+	httpPort = 8080
+
+	messageKindCommand     = "command"
+	messageOperationRead   = "read"
+	messageOperationWrite  = "write"
+	messageOperationDelete = "delete"
+)
+
+var (
+	hhook                  HHOOK
+	currentKeyStrokeSignal = make(chan rune)
+	userCommands           = make(map[string]*Command)
+	maxBufferLen           int
+	bufferStr              string
+
+	httpPortStr = ":" + strconv.Itoa(httpPort)
+	httpURL     = "http://localhost" + httpPortStr
+
+	processInterruptSignal = make(chan os.Signal)
+
+	wsUpgrader   = websocket.Upgrader{}
+	wsConnection webSocketConnection
+
+	t *template.Template
+)
+
+type webSocketConnection struct {
+	mux    sync.Mutex
+	client *websocket.Conn
+}
+
+type httpFileSystem struct {
+	fileSystem http.FileSystem
+}
+
+type Command struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Command     string `json:"command"`
+	Output      string `json:"output"`
+}
+
+type Message struct {
+	Kind      string      `json:"kind"`
+	Operation string      `json:"operation"`
+	Data      interface{} `json:"data"`
+}
 
 func receiveHook() {
 	// Declare a keyboard hook callback function (type HOOKPROC)
 	hookCallback := func(code int, wParam WPARAM, lParam LPARAM) LRESULT {
 		// If keystroke is pressed down
-		if wParam == 256 {
+		if wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN {
 			// Retrieve the keyboard hook struct
-			keyboardHookData := (*tagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
+			keyboardHookData := (*TagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
 
 			// Retrieve current keystroke from keyboard hook struct's vkCode
-			currentKeystroke := rune((*keyboardHookData).vkCode)
+			currentKeystroke := rune((*keyboardHookData).VkCode)
 
 			// Send the keystroke to be processed
 			select {
 			case currentKeyStrokeSignal <- currentKeystroke:
 
 			default:
-				// Skip if the channel currentKeyStrokeSignal is busy
-				// as it means that the keystroke is sent from the processHook
-				// We want to ignore keystrokes that we sent ourself
+				// Skip if the channel currentKeyStrokeSignal is busy,
+				// as it means the current keystroke is sent by the processHook while processing,
+				// we want to ignore keystrokes that we sent ourself
 			}
 		}
 
@@ -44,7 +116,7 @@ func receiveHook() {
 	}
 
 	// Install a Windows hook that listen to keyboard input
-	hhook = SetWindowsHookExW(WH_KEYBOARD_LL, hookCallback, 0, 0)
+	hhook, _ = SetWindowsHookExW(WH_KEYBOARD_LL, hookCallback, 0, 0)
 	if hhook == 0 {
 		panic("Failed to set Windows hook")
 	}
@@ -53,7 +125,7 @@ func receiveHook() {
 	go processHook()
 
 	// Start retrieving message from the hook
-	if !GetMessageW(0, 0, 0, 0) {
+	if b, _ := GetMessageW(0, 0, 0, 0); !b {
 		panic("Failed to get message")
 	}
 }
@@ -61,50 +133,64 @@ func receiveHook() {
 // Process your received keystroke here
 func processHook() {
 	for {
-		// Receive keystroke from channel
+		// Receive keystroke as rune from channel
 		currentKeyStroke := <-currentKeyStrokeSignal
 
 		// Process keystroke
-		fmt.Printf("Current key: %d\n", currentKeyStroke)
-		// TestSendMessage()
-		if commandReady && (currentKeyStroke == VK_SPACE || currentKeyStroke == VK_TAB) {
-			fmt.Println("Command ready in", uint16(userCommands[bufferCommand][0]))
-			switch currentKeyStroke {
-			case VK_SPACE:
-			case VK_TAB:
-				tagInputs := createKeyboardTagInputs(userCommands[bufferCommand])
-				SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
-			}
+		fmt.Printf("Current key: %d 0x0%X %c\n", currentKeyStroke, currentKeyStroke, currentKeyStroke)
 
-			bufferLen = 0
-			bufferCommand = ""
-			commandReady = false
+		shiftKeyState, _ := GetKeyState(VK_SHIFT)
+		capsLockState, _ := GetKeyState(VK_CAPITAL)
+
+		_, char, _ := findAllKeyCode(uint16(currentKeyStroke), 0, getKeyStateBool(shiftKeyState), getKeyStateBool(capsLockState, true))
+
+		// Reset if character is not a letter/symbol/number
+		if char == -1 {
+			bufferStr = ""
+
 			continue
 		}
 
-		commandReady = false
-		if bufferLen >= maxBufferLen {
-			bufferCommand = bufferCommand[1:]
-			bufferLen--
-		}
+		// User pre-collectionCommands can be CTRL, ALT, SHIFT and 1 letter afterwards
+		// User can create shortcut MODIFIER + a key or text collectionCommands + tab or space (remove collectionCommands)
+		switch char {
+		case '\b':
+			if len(bufferStr) > 0 {
+				bufferStr = bufferStr[:len(bufferStr)-1]
+			}
+		case '\r':
+			bufferStr += windowsNewLine
+			bufferStr = ""
+		case '\t':
+			if str, ok := userCommands[bufferStr]; ok {
+				// Send input
+				tagInputs := createTagInputs(str.Output)
+				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+				bufferStr = ""
+			}
+		case ' ':
+			if str, ok := userCommands[bufferStr]; ok {
+				// Send input
+				tagInputsBackspace := multiplyTagInputKey(tagInputBackspaceDown(), len(bufferStr)+1)
+				_, _ = SendInput(uint(len(tagInputsBackspace)), (*LPINPUT)(&tagInputsBackspace[0]), int(unsafe.Sizeof(tagInputsBackspace[0])))
 
-		switch {
-		case currentKeyStroke == VK_OEM_2:
-			bufferCommand += "/"
-		case 65 <= currentKeyStroke && currentKeyStroke <= 90 && GetKeyState(VK_SHIFT)>>15 == 1: // Capital letter
-			bufferCommand += string(currentKeyStroke)
-		case 65 <= currentKeyStroke && currentKeyStroke <= 90: // Small letters
-			bufferCommand += strings.ToLower(string(currentKeyStroke))
+				tagInputs := createTagInputs(str.Output)
+				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+
+				bufferStr = ""
+			}
 		default:
-			bufferLen--
-			// bufferCommand += string(currentKeyStroke)
-		}
-		bufferLen++
-		fmt.Println("Current buffer:", bufferCommand)
+			// If buffer full, trim
+			if len(bufferStr) >= maxBufferLen {
+				bufferStr = bufferStr[1:]
+			}
 
-		if _, ok := userCommands[bufferCommand]; ok {
-			commandReady = true
+			bufferStr += string(char)
+
+			//  TODO CHECK SHORTCUT KET EXIST EX: CTRL + ALT + F
 		}
+
+		fmt.Println("Buffer string:", bufferStr)
 
 		// If left bracket, left bracket, space x2, right bracket, left arrow x2
 		// If first double/single quotes, right quote, left arrow
@@ -112,142 +198,275 @@ func processHook() {
 		// if after {  } and enter, delete, backspace, left arrow, enter, right arrow, enter x2, left arrow
 		// if command xxx and tab, enter yyy
 		// if command xxx and space, backspace xxx len and enter yyy
-		// If brackets or quotes, just can copy text (mouse + keyboard to detect there is text selected), copy, left bracket/quote, space, paste, space, right bracket/quote
+		// If brackets or quotes, just can copy text (mouse + keyboard to detect there is text selected),
+		//      copy, left bracket/quote, space, paste, space, right bracket/quote
 		// If 'shortcut key', copy and format and paste
 	}
 }
 
-func defineCommands() {
-	userCommands["/akey"] = ""
-	userCommands["/adef"] = ""
+func updateUserCommand(c Command) {
+	userCommands[c.Command] = &c
 
-	maxBufferLen = 5
+	if len(c.Command) > maxBufferLen {
+		maxBufferLen = len(c.Command)
+	}
 }
 
-func createKeyboardTagInputs(str string) []tagINPUT {
-	var tagInputs []tagINPUT
+func init() {
+	// Setup process interrupt signal
+	signal.Notify(processInterruptSignal, os.Interrupt)
 
-	shiftDownInput := tagINPUT{
-		inputType: INPUT_KEYBOARD,
-		ki: KEYBDINPUT{
-			WVk: VK_SHIFT,
-		},
+	// Get all template files info
+	templateFiles, err := ioutil.ReadDir(templateFilesPath)
+	if err != nil {
+		panic(err)
 	}
 
-	shiftUpInput := tagINPUT{
-		inputType: INPUT_KEYBOARD,
-		ki: KEYBDINPUT{
-			WVk:     VK_SHIFT,
-			DwFlags: KEYEVENTF_KEYUP,
-		},
+	// Get the name of template files
+	templateFilesName := make([]string, len(templateFiles)+1)
+
+	templateFilesName[0] = htmlFilePath + mainHtmlFile
+	for k := range templateFiles {
+		templateFilesName[k+1] = templateFilesPath + templateFiles[k].Name()
 	}
 
-	for _, v := range str {
-		switch {
-		case 65 <= v && v <= 90: // Capital letter
-			key := tagINPUT{
-				inputType: INPUT_KEYBOARD,
-				ki: KEYBDINPUT{
-					WVk: uint16(v),
-				},
-			}
-
-			tagInputs = append(tagInputs, shiftDownInput, key, shiftUpInput)
-
-		case 97 <= v && v <= 122: // Small letters
-			key := tagINPUT{
-				inputType: INPUT_KEYBOARD,
-				ki: KEYBDINPUT{
-					WVk: uint16(strings.ToUpper(string(v))[0]),
-				},
-			}
-
-			tagInputs = append(tagInputs, key)
-
-		case v == 40: // Left bracket
-			key := tagINPUT{
-				inputType: INPUT_KEYBOARD,
-				ki: KEYBDINPUT{
-					WVk: VK_NINE,
-				},
-			}
-
-			tagInputs = append(tagInputs, shiftDownInput, key, shiftUpInput)
-		case v == 41: // Right bracket
-			key := tagINPUT{
-				inputType: INPUT_KEYBOARD,
-				ki: KEYBDINPUT{
-					WVk: VK_ZERO,
-				},
-			}
-
-			tagInputs = append(tagInputs, shiftDownInput, key, shiftUpInput)
-
-		case v == 46: // Period
-			key := tagINPUT{
-				inputType: INPUT_KEYBOARD,
-				ki: KEYBDINPUT{
-					WVk: VK_OEM_PERIOD,
-				},
-			}
-
-			tagInputs = append(tagInputs, key)
-
-		case v == 32: // Space
-			key := tagINPUT{
-				inputType: INPUT_KEYBOARD,
-				ki: KEYBDINPUT{
-					WVk: VK_SPACE,
-				},
-			}
-
-			tagInputs = append(tagInputs, key)
-
-		default:
-			// Don't process key if not specified above
-			// Or keys like backspace, delete, and weird symbols will be added to the buffer
-		} // END switch
+	// Parse template files
+	t, err = template.ParseFiles(templateFilesName...)
+	if err != nil {
+		panic(err)
 	}
 
-	return tagInputs
-}
-
-func TestSendMessage() {
-	handle := GetForegroundWindow()
-	titleSize := SendMessage(handle, WM_GETTEXTLENGTH, 0, 0)
-
-	if titleSize == 0 {
-		log.Println("Empty title")
-	} else {
-		title := make([]byte, titleSize+1)
-
-		log.Println("Sending message", len(title))
-		SendMessage(handle, WM_GETTEXT, WPARAM(len(title)), (uintptr(unsafe.Pointer(&title))))
-		log.Println("Doneending message", title)
-
+	// Load DB
+	// Create or open the database
+	myDB, err = db.OpenDB(dbPath)
+	if err != nil {
+		panic(err)
 	}
 }
 
 func main() {
-	log.Println("Start")
+	// Call systray GUI
+	systray.Run(onReady, nil)
+}
+
+func onReady() {
+	// Run the server
+	setupHTTPServer()
+
+	// Start low level keyboard listener
+	setupWindowsHook()
+
+	// Setup system tray icon
+	setupTrayIcon()
+
+	// Setup DB
+	setupDB()
+}
+
+func setupHTTPServer() {
+	// Setup mux
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Server template file
+		err := t.ExecuteTemplate(w, mainHtmlFile, nil)
+		if err != nil {
+			panic(err)
+		}
+	})
+
+	mux.HandleFunc("/dist/jquery.min.js", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, jqueryFilePath)
+	})
+
+	mux.HandleFunc("/dist/jquery-ui.min.js", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, jqueryUIFilePath)
+	})
+
+	mux.Handle("/html/", http.StripPrefix("/html", http.FileServer(httpFileSystem{http.Dir(htmlFilePath)})))
+	mux.Handle("/dist/", http.StripPrefix("/dist", http.FileServer(httpFileSystem{http.Dir(semanticFilePath)})))
+
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "icons/icon.ico")
+	})
+
+	mux.HandleFunc("/ws", handleWebSocket)
+
+	// Concurrently run web server
+	go func() {
+		log.Println("Started listening on", httpPort)
+		log.Fatal(http.ListenAndServe(httpPortStr, mux))
+	}()
+}
+
+// Handle web socket
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Upgrade GET request to a web socket
+	wsConn, err := wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Assign the web socket client
+	wsConnection.client = wsConn
+
+	// Send collectionCommands to UI
+	webSocketWriteMessage(messageKindCommand, messageOperationWrite, getAllCommands())
+
+	// Start reading message
+	webSocketReadMessage()
+}
+
+func webSocketReadMessage() {
+	for {
+		// Read message
+		var m Message
+		err := wsConnection.client.ReadJSON(&m)
+
+		if err != nil {
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
+				log.Println("Web socket connection closed:", err)
+			} else {
+				log.Println("Web socket error:", err)
+			}
+
+			break
+		}
+
+		// Read success
+		processIncomingMessage(m)
+	}
+
+	// Close the connection at the end if read fails
+	_ = wsConnection.client.Close()
+}
+
+func getAllCommands() *[]Command {
+	commands := make([]Command, len(userCommands))
+
+	i := 0
+	for k := range userCommands {
+		commands[i] = *userCommands[k]
+		i++
+	}
+
+	return &commands
+}
+
+func processIncomingMessage(m Message) {
+	dataStr := m.Data.(string)
+
+	if m.Kind == messageKindCommand {
+		switch m.Operation {
+		case messageOperationWrite:
+			var c Command
+			_ = json.Unmarshal([]byte(dataStr), &c)
+
+			updateUserCommand(c)
+			writeCommandToDB(c.Title, c.Description, c.Command, c.Output)
+		case messageOperationDelete:
+			deleteCommandFromDB(dataStr)
+		}
+	}
+}
+
+func webSocketWriteMessage(kind string, operation string, jsonMsg interface{}) {
+	wsConnection.mux.Lock()
+
+	// Check any client exist
+	if wsConnection.client == nil {
+		wsConnection.mux.Unlock()
+		log.Println("Unable to write message: no client exist!")
+		return
+	}
+
+	err := wsConnection.client.WriteJSON(Message{
+		Kind:      kind,
+		Operation: operation,
+		Data:      jsonMsg,
+	})
+	if err != nil {
+		log.Println("Write connection error:", err)
+	}
+
+	log.Println("Write message succeeded:", time.Now().Format(time.Kitchen))
+
+	wsConnection.mux.Unlock()
+}
+
+func setupTrayIcon() {
+	systray.SetIcon(icon.Data)
+	systray.SetTooltip("Short Cutteer")
+
+	// Add default menu items in sequence
+	menuLaunchUI := systray.AddMenuItem("Launch UI", "", true)
+	systray.AddSeparator()
+	menuQuit := systray.AddMenuItem("Quit", "", false)
+
+	go func() {
+		for {
+			select {
+			case <-menuLaunchUI.ClickedCh:
+				x := exec.Command("explorer", httpURL).Start()
+				fmt.Println(x)
+
+			case <-menuQuit.ClickedCh:
+				processInterrupted()
+
+			case <-processInterruptSignal:
+				processInterrupted()
+			}
+		}
+	}()
+}
+
+func setupWindowsHook() {
+	log.Println("Keyboard listener started ......")
 
 	// Load all required DLLs
-	LoadDLLs()
-
-	// Define commands
-	defineCommands()
-
-	// Setup process interrupt signal
-	processInterruptSignal := make(chan os.Signal)
-	signal.Notify(processInterruptSignal, os.Interrupt)
+	_ = LoadDLLs()
 
 	// Setup hook annd receive message
 	go receiveHook()
+}
 
-	// Wait for process to be interrupted
-	<-processInterruptSignal
-
+func processInterrupted() {
 	// Unhook Windows keyboard
-	fmt.Println("Removing Windows hook ......")
-	UnhookWindowsHookEx(hhook)
+	log.Println("Removing Windows hook ......")
+	_, _ = UnhookWindowsHookEx(hhook)
+
+	// Quit system tray
+	log.Println("Removing sytem tray ......")
+	systray.Quit()
+
+	// Close db
+	err := myDB.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	// Exit
+	os.Exit(1)
+}
+
+func (fs httpFileSystem) Open(name string) (http.File, error) {
+	file, err := fs.fileSystem.Open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	if fileInfo.IsDir() {
+		index := strings.TrimSuffix(name, "/") + "/index.html"
+
+		if _, err := fs.fileSystem.Open(index); err != nil {
+			return nil, err
+		}
+	}
+
+	return file, nil
 }
