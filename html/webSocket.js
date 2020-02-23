@@ -1,8 +1,10 @@
 /* global submitModalNewCommand */
 
+let webSocket;
+
 $(document).ready(function () {
     const webSocketStatusElement = document.getElementById("webSocketStatus");
-    const webSocket = new WebSocket("ws://" + window.location.host + "/ws");
+    webSocket = new WebSocket("ws://" + window.location.host + "/ws");
 
     // Web socket open
     webSocket.onopen = function () {
@@ -12,7 +14,6 @@ $(document).ready(function () {
     // Web socket receive message
     webSocket.onmessage = function (e) {
         let data = JSON.parse(e.data);
-        console.log(data);
 
         data.forEach((d) => {
             submitModalNewCommand(d.title, d.description, d.command, d.output);
@@ -29,13 +30,13 @@ $(document).ready(function () {
         webSocketStatusElement.innerHTML = "Web socket status: <b>Error</b>";
     };
 
-    // Send data to web socket
-    function send(dataToSend) {
-        webSocket.send(JSON.stringify(dataToSend));
-    }
-
     // On exit
     window.onbeforeunload = function () {
         webSocket.close();
     };
 });
+
+// Send data to web socket
+function send(dataToSend) {
+    webSocket.send(JSON.stringify(dataToSend));
+}

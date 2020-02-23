@@ -118,7 +118,16 @@ function validateModal(form) {
         return false;
     }
 
-    // Else call method below
+    // Else call methods below
+    let obj = {
+        title: inputTitle.val(),
+        description: form.find("input[name ='description']").val(),
+        command: form.find("input[name ='command']").val(),
+        output: form.find("input[name ='output']").val()
+    };
+
+    send(obj);
+
     submitModalNewCommand(inputTitle.val(),
         form.find("input[name ='description']").val(),
         form.find("input[name ='command']").val(),

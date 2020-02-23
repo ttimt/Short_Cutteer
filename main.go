@@ -43,6 +43,9 @@ const (
 	dbPath = "db"
 
 	httpPort = 8080
+
+	dbCollectionCommand           = "Commands"
+	dbCollectionCommandFieldTitle = "title"
 )
 
 var (
@@ -80,6 +83,12 @@ type Command struct {
 	Description string `json:"description"`
 	Command     string `json:"command"`
 	Output      string `json:"output"`
+}
+
+type Message struct {
+	Kind      string // Ex: Command
+	Operation string // Ex: Delete
+	Data      interface{}
 }
 
 func receiveHook() {
@@ -255,34 +264,34 @@ func onReady() {
 }
 
 func setupDB() {
-	// Find collections: Commands
-	myDB.Drop("Commands")
-	commands = myDB.ForceUse("Commands")
-	if err := commands.Index([]string{"title", "description", "command", "output"}); err != nil {
-		panic(err)
+	// Reset DB
+	// myDB.Drop("Commands")
+
+	// Check if collection "Commands" exists
+	if !myDB.ColExists(dbCollectionCommand) {
+		// Create collection "Commands"
+		if err := myDB.Create(dbCollectionCommand); err != nil {
+			panic(err)
+		}
 	}
 
-	commands.Insert(map[string]interface{}{
-		"title":       "hey",
-		"description": "description!",
-		"command":     "/akey",
-		"output":      "VALUEOBJECTKEY",
-	})
+	// Use collection: Commands
+	commands = myDB.Use(dbCollectionCommand)
 
-	commands.Insert(map[string]interface{}{
-		"title":       "he nonono",
-		"description": "description!!!!!",
-		"command":     "/adef",
-		"output":      "VALUE OBJECT DEF",
-	})
+	// Create indexing "title" for querying
+	if !myDB.ColExists(dbCollectionCommand) {
+		if err := commands.Index([]string{dbCollectionCommandFieldTitle}); err != nil {
+			panic(err)
+		}
+	}
 }
 
 func readDB() {
 	var cs []Command
+	var c Command
 
 	// Read documents
 	commands.ForEachDoc(func(id int, doc []byte) (moveOn bool) {
-		var c Command
 		_ = json.Unmarshal(doc, &c)
 		cs = append(cs, c)
 
@@ -290,6 +299,21 @@ func readDB() {
 	})
 
 	webSocketWriteMessage(cs)
+}
+
+func writeDB(data map[string]interface{}) {
+	if _, err := commands.Insert(data); err != nil {
+		panic(err)
+	}
+}
+
+func writeCommandToDB(title, description, command, output string) {
+	writeDB(map[string]interface{}{
+		dbCollectionCommandFieldTitle: title,
+		"description":                 description,
+		"command":                     command,
+		"output":                      output,
+	})
 }
 
 func testDB() {
@@ -419,7 +443,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 func webSocketReadMessage() {
 	for {
 		// Read message
-		_, m, err := wsConnection.client.ReadMessage()
+		var c Command
+		err := wsConnection.client.ReadJSON(&c)
 
 		if err != nil {
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
@@ -432,7 +457,8 @@ func webSocketReadMessage() {
 		}
 
 		// Read success
-		fmt.Println("Read message succeeded!", m, time.Now().Format(time.Kitchen))
+		// fmt.Println("Read message succeeded!", string(m), time.Now().Format(time.Kitchen))
+		writeCommandToDB(c.Title, c.Description, c.Command, c.Output)
 	}
 
 	// Close the connection at the end if read fails
