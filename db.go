@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/HouzuoGuo/tiedot/dberr"
 )
 
@@ -58,6 +59,25 @@ func writeCommandToDB(title, description, command, output string) {
 		"command":                     command,
 		"output":                      output,
 	})
+}
+
+func selectCommandWithTitle(title string) {
+	var query interface{}
+	var queryResult map[int]struct{}
+
+	_ = json.Unmarshal([]byte(`[{"eq:" "`+title+`", "in": ["`+dbCollectionCommandFieldTitle+`"]}]`), &query)
+
+	if err := db.EvalQuery(query, commands, &queryResult); err != nil {
+		panic(err)
+	}
+
+	for id := range queryResult {
+		if err := commands.Delete(id); dberr.Type(err) == dberr.ErrorNoDoc {
+			fmt.Println("The document was already deleted")
+		} else if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func testDB() {
