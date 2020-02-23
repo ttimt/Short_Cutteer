@@ -1,3 +1,5 @@
+/* global send */
+
 const cardColors = [
     "red",
     "orange",
@@ -46,11 +48,6 @@ $(".sortable").sortable({
 
 $(".add-command").click(function () {
     $(".ui.modal.add-command-modal").modal("show");
-});
-
-cardsParent.on("click", ".delete", function () {
-    sendDeleteCommand($(this).parents(".ui.card").find(".header input").val());
-    $(this).parents(".ui.card").remove();
 });
 
 function submitModalNewCommand(title, description, command, output) {
@@ -117,9 +114,9 @@ modalUi.modal("setting", "transition", "horizontal flip").modal({
 
 function sendCommand(kind, operation, data) {
     let obj = {
-        kind: kind,
-        operation: operation,
-        data: data
+        kind,
+        operation,
+        data
     };
 
     send(obj);
@@ -133,12 +130,17 @@ function sendNewCommand(title, description, command, output) {
         output
     });
 
-    sendCommand(messageKindCommand, messageOperationWrite, data)
+    sendCommand(messageKindCommand, messageOperationWrite, data);
 }
 
 function sendDeleteCommand(title) {
     sendCommand(messageKindCommand, messageOperationDelete, title);
 }
+
+cardsParent.on("click", ".delete", function () {
+    sendDeleteCommand($(this).parents(".ui.card").find(".header input").val());
+    $(this).parents(".ui.card").remove();
+});
 
 function validateModal(form) {
     // If title empty, return false
