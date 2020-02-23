@@ -44,6 +44,6 @@ $(document).ready(function () {
 });
 
 // Send data to web socket
-let send = function (dataToSend) {
+var send = function (dataToSend) {
     webSocket.send(JSON.stringify(dataToSend));
 };
