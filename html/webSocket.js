@@ -1,6 +1,7 @@
 /* global submitModalNewCommand */
 /* global messageKindCommand */
 /* global messageOperationWrite */
+/* exported send */
 
 let webSocket;
 
