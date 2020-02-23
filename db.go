@@ -8,11 +8,20 @@ import (
 	"github.com/HouzuoGuo/tiedot/dberr"
 )
 
-func setupDB() {
-	// Reset DB
-	// myDB.Drop("Commands")
+const (
+	dbCollectionCommand             = "Commands"
+	dbCollectionCommandFieldTitle   = "title"
+	dbCollectionCommandFieldCommand = "command"
+)
 
-	// Check if collection "Commands" exists
+var (
+	myDB               *db.DB
+	collectionCommands *db.Col
+)
+
+// Initialize collections and indexes
+func setupDB() {
+	// Create collection 'Commands' if does not exists
 	if !myDB.ColExists(dbCollectionCommand) {
 		// Create collection "Commands"
 		if err := myDB.Create(dbCollectionCommand); err != nil {
@@ -20,40 +29,54 @@ func setupDB() {
 		}
 	}
 
-	// Use collection: Commands
-	commandsCollection = myDB.Use(dbCollectionCommand)
+	// Select collection 'Commands' for usage
+	collectionCommands = myDB.Use(dbCollectionCommand)
 
-	// Create indexing "title" for querying
+	// Create index "title" for querying in 'Commands'
 	if !myDB.ColExists(dbCollectionCommand) {
-		if err := commandsCollection.Index([]string{dbCollectionCommandFieldTitle}); err != nil {
+		if err := collectionCommands.Index([]string{dbCollectionCommandFieldTitle}); err != nil {
 			panic(err)
 		}
 	}
 
-	// Read from DB
+	// Read from DB and import to in memory struct
 	readAndImportFromDB()
 }
 
+// Reset collection by the given name in DB
+func resetDBCollection(nameCollection string) {
+	// Drop the collection
+	_ = myDB.Drop(nameCollection)
+}
+
+// Read all Commands from DB and import to in memory struct
 func readAndImportFromDB() {
+	// Temporary store unmarshalled Command
 	var c Command
 
-	// Read documents
-	commandsCollection.ForEachDoc(func(id int, doc []byte) (moveOn bool) {
+	// Read all documents
+	collectionCommands.ForEachDoc(func(id int, doc []byte) (moveOn bool) {
+		// Convert Command from stored JSON format
 		_ = json.Unmarshal(doc, &c)
+
+		// Add newly read Command to in memory userCommands struct
 		updateUserCommand(c)
 
+		// Continue to the next item in the collection
 		return true
 	})
 }
 
-func writeDB(data map[string]interface{}) {
-	if _, err := commandsCollection.Insert(data); err != nil {
+// Write data to the specified collection
+func writeToDB(collection *db.Col, data map[string]interface{}) {
+	if _, err := collection.Insert(data); err != nil {
 		panic(err)
 	}
 }
 
+// Write a command to the Command collection
 func writeCommandToDB(title, description, command, output string) {
-	writeDB(map[string]interface{}{
+	writeToDB(collectionCommands, map[string]interface{}{
 		dbCollectionCommandFieldTitle: title,
 		"description":                 description,
 		"command":                     command,
@@ -61,104 +84,49 @@ func writeCommandToDB(title, description, command, output string) {
 	})
 }
 
+// Delete a command from Command collection
 func deleteCommandFromDB(title string) {
-	// Get the command with the title
-	queryResult := selectCommandWithTitle(title)
+	// Get the Command with the title
+	queryResult := retrieveCommandsFromTitle(title)
 
 	for id := range queryResult {
-		toDelete, _ := commandsCollection.Read(id)
-		command := toDelete[dbCollectionCommandFieldTitle].(string)
+		// Get the commandStr(string) of the Command to use for deleting the in memory commandStr in userCommands struct
+		commandToBeDeleted, _ := collectionCommands.Read(id)
+		commandStr := commandToBeDeleted[dbCollectionCommandFieldCommand].(string)
 
-		if err := commandsCollection.Delete(id); dberr.Type(err) == dberr.ErrorNoDoc {
+		// Delete command from collection and check for error
+		if err := collectionCommands.Delete(id); dberr.Type(err) == dberr.ErrorNoDoc {
 			fmt.Println("The document was already deleted")
 		} else if err != nil {
 			panic(err)
 		} else {
 			// Delete from in memory struct userCommands
-			delete(userCommands, command)
+			delete(userCommands, commandStr)
 		}
 	}
 }
 
-func selectCommandWithTitle(title string) map[int]struct{} {
-	var query interface{}
+// Return Commands by querying with the specified title
+func retrieveCommandsFromTitle(title string) map[int]struct{} {
+	// Store the query result
 	queryResult := make(map[int]struct{})
 
-	_ = json.Unmarshal([]byte(`[{"eq": "`+title+`", "in": ["`+dbCollectionCommandFieldTitle+`"]}]`), &query)
+	// Retrieve the query string
+	query := query(title, dbCollectionCommandFieldTitle)
 
-	if err := db.EvalQuery(query, commandsCollection, &queryResult); err != nil {
+	// Execute the query
+	if err := db.EvalQuery(query, collectionCommands, &queryResult); err != nil {
 		panic(err)
 	}
 
 	return queryResult
 }
 
-func testDB() {
-	// Create two collections: Feeds and Votes
-	if err := myDB.Create("Feeds"); err != nil {
-		panic(err)
-	}
+// Create a query to find a specific value from the specified index
+// Index must first be set in setupDB()
+func query(value, index string) (query interface{}) {
+	// Create the query with the index
+	_ = json.Unmarshal([]byte(`[{"eq": "`+value+`", "in": ["`+index+`"]}]`), &query)
 
-	// if err := myDB.Create("Votes"); err != nil {
-	// 	panic(err)
-	// }
-
-	// What collections do I now have?
-	// for _, name := range myDB.AllCols() {
-	// 	fmt.Printf("I have a collection called %s\n", name)
-	// }
-
-	// Rename collection "Votes" to "Points"
-	// if err := myDB.Rename("Votes", "Points"); err != nil {
-	// 	panic(err)
-	// }
-
-	// Drop (delete) collection "Points"
-	// if err := myDB.Drop("Points"); err != nil {
-	// 	panic(err)
-	// }
-
-	// Start using a collection (the reference is valid until DB schema changes or Scrub is carried out)
-	feeds := myDB.Use("Feeds")
-
-	// Insert document (afterwards the docID uniquely identifies the document and will never change)
-	docID, err := feeds.Insert(map[string]interface{}{
-		"name": "Go 1.2 is released",
-		"url":  "golang.org"})
-	if err != nil {
-		panic(err)
-	}
-
-	// Read document
-	readBack, err := feeds.Read(docID)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Document", docID, "is", readBack)
-
-	// Update document
-	err = feeds.Update(docID, map[string]interface{}{
-		"name": "Go is very popular",
-		"url":  "google.com"})
-	if err != nil {
-		panic(err)
-	}
-
-	// Process all documents (note that document order is undetermined)
-	feeds.ForEachDoc(func(id int, docContent []byte) (willMoveOn bool) {
-		fmt.Println("For each document", id, "is", string(docContent))
-		return true // move on to the next document OR
-		// return false // do not move on to the next document
-	})
-
-	// More complicated error handing - identify the error Type.
-	// In this example, the error code tells that the document no longer exists.
-	if err := feeds.Delete(docID); dberr.Type(err) == dberr.ErrorNoDoc {
-		fmt.Println("The document was already deleted")
-	}
-
-	// Drop (delete) collection "Feeds"
-	if err := myDB.Drop("Feeds"); err != nil {
-		panic(err)
-	}
+	return
 }

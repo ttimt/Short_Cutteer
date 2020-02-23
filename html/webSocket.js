@@ -15,8 +15,8 @@ $(document).ready(function () {
     webSocket.onmessage = function (e) {
         let data = JSON.parse(e.data);
 
-        if (data.kind === "command") {
-            if (data.operation === "write") {
+        if (data.kind === messageKindCommand) {
+            if (data.operation === messageOperationWrite) {
                 data.data.forEach((d) => {
                     submitModalNewCommand(d.title, d.description, d.command, d.output);
                 });

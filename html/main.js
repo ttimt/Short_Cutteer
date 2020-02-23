@@ -14,6 +14,10 @@ const cardColors = [
     "black"
 ];
 
+const messageKindCommand = "command";
+const messageOperationWrite = "write";
+const messageOperationDelete = "delete";
+
 let cardsParent = $("#cards-parent");
 let modalUi = $(".ui.modal.add-command-modal");
 let modalForm = $(".ui.modal.add-command-modal #form-modal");
@@ -120,16 +124,16 @@ function validateModal(form) {
     }
 
     // Else call methods below
-    inputDescription = form.find("input[name ='description']").val();
-    inputCommand = form.find("input[name ='command']").val();
-    inputOutput = form.find("input[name ='output']").val();
+    let inputDescription = form.find("input[name ='description']").val();
+    let inputCommand = form.find("input[name ='command']").val();
+    let inputOutput = form.find("input[name ='output']").val();
 
     sendNewCommand(inputTitle, inputDescription, inputCommand, inputOutput);
     submitModalNewCommand(inputTitle, inputDescription, inputCommand, inputOutput);
 }
 
 function sendDeleteCommand(title) {
-    sendCommand("command", "delete", title)
+    sendCommand(messageKindCommand, messageOperationDelete, title)
 }
 
 function sendNewCommand(title, description, command, output) {
@@ -140,7 +144,7 @@ function sendNewCommand(title, description, command, output) {
         output: output
     });
 
-    sendCommand("command", "write", data)
+    sendCommand(messageKindCommand, messageOperationWrite, data)
 }
 
 function sendCommand(kind, operation, data) {

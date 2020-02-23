@@ -43,9 +43,6 @@ const (
 
 	httpPort = 8080
 
-	dbCollectionCommand           = "Commands"
-	dbCollectionCommandFieldTitle = "title"
-
 	messageKindCommand     = "command"
 	messageOperationRead   = "read"
 	messageOperationWrite  = "write"
@@ -66,9 +63,6 @@ var (
 
 	wsUpgrader   = websocket.Upgrader{}
 	wsConnection webSocketConnection
-
-	myDB               *db.DB
-	commandsCollection *db.Col
 
 	t *template.Template
 )
@@ -157,8 +151,8 @@ func processHook() {
 			continue
 		}
 
-		// User pre-commandsCollection can be CTRL, ALT, SHIFT and 1 letter afterwards
-		// User can create shortcut MODIFIER + a key or text commandsCollection + tab or space (remove commandsCollection)
+		// User pre-collectionCommands can be CTRL, ALT, SHIFT and 1 letter afterwards
+		// User can create shortcut MODIFIER + a key or text collectionCommands + tab or space (remove collectionCommands)
 		switch char {
 		case '\b':
 			if len(bufferStr) > 0 {
@@ -316,7 +310,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Assign the web socket client
 	wsConnection.client = wsConn
 
-	// Send commandsCollection to UI
+	// Send collectionCommands to UI
 	webSocketWriteMessage(messageKindCommand, messageOperationWrite, getAllCommands())
 
 	// Start reading message
