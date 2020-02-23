@@ -112,30 +112,37 @@ modalUi.modal("setting", "transition", "horizontal flip").modal({
 
 function validateModal(form) {
     // If title empty, return false
-    let inputTitle = form.find("input[name ='title']");
-    if (inputTitle.val() === "") {
+    let inputTitle = form.find("input[name ='title']").val();
+    if (inputTitle === "") {
         form.focus();
         return false;
     }
 
     // Else call methods below
+    inputDescription = form.find("input[name ='description']").val();
+    inputCommand = form.find("input[name ='command']").val();
+    inputOutput = form.find("input[name ='output']").val();
+
+    sendNewCommand(inputTitle, inputDescription, inputCommand, inputOutput);
+    submitModalNewCommand(inputTitle, inputDescription, inputCommand, inputOutput);
+}
+
+function sendNewCommand(title, description, command, output) {
     let obj = {
-        title: inputTitle.val(),
-        description: form.find("input[name ='description']").val(),
-        command: form.find("input[name ='command']").val(),
-        output: form.find("input[name ='output']").val()
+        kind: "command",
+        operation: "write",
+        data: JSON.stringify({
+            title: title,
+            description: description,
+            command: command,
+            output: output
+        })
     };
 
     send(obj);
-
-    submitModalNewCommand(inputTitle.val(),
-        form.find("input[name ='description']").val(),
-        form.find("input[name ='command']").val(),
-        form.find("input[name ='output']").val()
-    );
 }
 
-$("#form-modal").submit(function (e) {
+$("#form-modal").submit(function () {
     validateModal($(this));
 
     return false;

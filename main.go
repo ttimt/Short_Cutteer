@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -44,6 +45,11 @@ const (
 
 	dbCollectionCommand           = "Commands"
 	dbCollectionCommandFieldTitle = "title"
+
+	messageKindCommand     = "command"
+	messageOperationRead   = "read"
+	messageOperationWrite  = "write"
+	messageOperationDelete = "delete"
 )
 
 var (
@@ -85,9 +91,9 @@ type Command struct {
 }
 
 type Message struct {
-	Kind      string // Ex: Command
-	Operation string // Ex: Delete
-	Data      interface{}
+	Kind      string      `json:"kind"`
+	Operation string      `json:"operation"`
+	Data      interface{} `json:"data"`
 }
 
 func receiveHook() {
@@ -313,7 +319,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	wsConnection.client = wsConn
 
 	// Send commandsCollection to UI
-	webSocketWriteMessage(commands)
+	webSocketWriteMessage(messageKindCommand, messageOperationWrite, commands)
 
 	// Start reading message
 	webSocketReadMessage()
@@ -322,8 +328,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 func webSocketReadMessage() {
 	for {
 		// Read message
-		var c Command
-		err := wsConnection.client.ReadJSON(&c)
+		var m Message
+		err := wsConnection.client.ReadJSON(&m)
 
 		if err != nil {
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
@@ -335,16 +341,28 @@ func webSocketReadMessage() {
 			break
 		}
 
-		// Read success - Add new user commandsCollection
-		updateUserCommand(c)
-		writeCommandToDB(c.Title, c.Description, c.Command, c.Output)
+		// Read success
+		processIncomingMessage(m)
 	}
 
 	// Close the connection at the end if read fails
 	_ = wsConnection.client.Close()
 }
 
-func webSocketWriteMessage(jsonMsg interface{}) {
+func processIncomingMessage(m Message) {
+	// Add new user commandsCollection
+	if m.Kind == messageKindCommand {
+		if m.Operation == messageOperationWrite {
+			var c Command
+			_ = json.Unmarshal([]byte(m.Data.(string)), &c)
+
+			updateUserCommand(c)
+			writeCommandToDB(c.Title, c.Description, c.Command, c.Output)
+		}
+	}
+}
+
+func webSocketWriteMessage(kind string, operation string, jsonMsg interface{}) {
 	wsConnection.mux.Lock()
 
 	// Check any client exist
@@ -354,7 +372,11 @@ func webSocketWriteMessage(jsonMsg interface{}) {
 		return
 	}
 
-	err := wsConnection.client.WriteJSON(jsonMsg)
+	err := wsConnection.client.WriteJSON(Message{
+		Kind:      kind,
+		Operation: operation,
+		Data:      jsonMsg,
+	})
 	if err != nil {
 		log.Println("Write connection error:", err)
 	}

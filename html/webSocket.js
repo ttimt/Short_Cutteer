@@ -15,9 +15,15 @@ $(document).ready(function () {
     webSocket.onmessage = function (e) {
         let data = JSON.parse(e.data);
 
-        data.forEach((d) => {
-            submitModalNewCommand(d.title, d.description, d.command, d.output);
-        });
+        console.log(data.kind);
+        console.log(data.operation);
+        if (data.kind === "command") {
+            if (data.operation === "write") {
+                data.data.forEach((d) => {
+                    submitModalNewCommand(d.title, d.description, d.command, d.output);
+                });
+            }
+        }
     };
 
     // Web socket close
