@@ -65,6 +65,8 @@ var (
 	wsConnection webSocketConnection
 
 	t *template.Template
+
+	autoCompleteJustDone bool
 )
 
 type webSocketConnection struct {
@@ -141,12 +143,50 @@ func processHook() {
 
 		shiftKeyState, _ := GetKeyState(VK_SHIFT)
 		capsLockState, _ := GetKeyState(VK_CAPITAL)
+		isShiftEnabled := getKeyStateBool(shiftKeyState)
+		isCapsEnabled := getKeyStateBool(capsLockState, true)
 
-		_, char, _ := findAllKeyCode(uint16(currentKeyStroke), 0, getKeyStateBool(shiftKeyState), getKeyStateBool(capsLockState, true))
+		_, char, _ := findAllKeyCode(uint16(currentKeyStroke), 0, isShiftEnabled, isCapsEnabled)
+
+		if isAutoComplete(char) {
+			// Send the auto complete
+			var tagInputs []TagINPUT
+			switch char {
+			case '(':
+				// Parenthesis
+				tagInputs = createTagInputs("  )", isShiftEnabled, isCapsEnabled)
+				tagInputs = append(tagInputs, tagInputLeftArrowDown(), tagInputLeftArrowUp(), tagInputLeftArrowDown())
+			case '{':
+				// Scope body
+				tagInputs = createTagInputs(windowsNewLine+windowsNewLine, isShiftEnabled, isCapsEnabled)
+				tagInputs = append(tagInputs, tagInputBackspaceDown(), tagInputBackspaceUp())
+				tagInputs = append(tagInputs, createTagInputs("}", isShiftEnabled, isCapsEnabled)...)
+				tagInputs = append(tagInputs, tagInputLeftArrowDown(), tagInputLeftArrowUp(), tagInputLeftArrowDown())
+			case '[':
+				tagInputs = createTagInputs("]", isShiftEnabled, isCapsEnabled)
+				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+			case '\'':
+				tagInputs = createTagInputs("'", isShiftEnabled, isCapsEnabled)
+				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+			case '"':
+				tagInputs = createTagInputs("\"", isShiftEnabled, isCapsEnabled)
+				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+			default:
+				panic("Auto complete not match with isAutoComplete(char) function!")
+			}
+
+			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+			autoCompleteJustDone = true
+			continue
+		}
 
 		// Reset if character is not a letter/symbol/number
 		if char == -1 {
 			bufferStr = ""
+
+			if currentKeyStroke != VK_SHIFT && currentKeyStroke != VK_LSHIFT && currentKeyStroke != VK_RSHIFT {
+				autoCompleteJustDone = false
+			}
 
 			continue
 		}
@@ -158,27 +198,40 @@ func processHook() {
 			if len(bufferStr) > 0 {
 				bufferStr = bufferStr[:len(bufferStr)-1]
 			}
+
+			if autoCompleteJustDone {
+				// Send input
+				tagInputs := []TagINPUT{tagInputDeleteDown(), tagInputBackspaceDown()}
+				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+			}
 		case '\r':
 			bufferStr += windowsNewLine
 			bufferStr = ""
 		case '\t':
 			if str, ok := userCommands[bufferStr]; ok {
 				// Send input
-				tagInputs := createTagInputs(str.Output)
+				tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
 				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
-				bufferStr = ""
+			} else {
+				tagInputs := []TagINPUT{tagInputTabDown()}
+				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
 			}
+
+			bufferStr = ""
 		case ' ':
 			if str, ok := userCommands[bufferStr]; ok {
 				// Send input
-				tagInputsBackspace := multiplyTagInputKey(tagInputBackspaceDown(), len(bufferStr)+1)
+				tagInputsBackspace := multiplyTagInputKey([]TagINPUT{tagInputBackspaceDown(), tagInputBackspaceUp()}, len(bufferStr)+1)
 				_, _ = SendInput(uint(len(tagInputsBackspace)), (*LPINPUT)(&tagInputsBackspace[0]), int(unsafe.Sizeof(tagInputsBackspace[0])))
 
-				tagInputs := createTagInputs(str.Output)
+				tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
 				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
-
-				bufferStr = ""
+			} else {
+				tagInputs := createTagInputs(" ", isShiftEnabled, isCapsEnabled)
+				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
 			}
+
+			bufferStr = ""
 		default:
 			// If buffer full, trim
 			if len(bufferStr) >= maxBufferLen {
@@ -190,6 +243,7 @@ func processHook() {
 			//  TODO CHECK SHORTCUT KET EXIST EX: CTRL + ALT + F
 		}
 
+		autoCompleteJustDone = false
 		fmt.Println("Buffer string:", bufferStr)
 
 		// If left bracket, left bracket, space x2, right bracket, left arrow x2
@@ -202,6 +256,15 @@ func processHook() {
 		//      copy, left bracket/quote, space, paste, space, right bracket/quote
 		// If 'shortcut key', copy and format and paste
 	}
+}
+
+func isAutoComplete(char rune) bool {
+	return char ==
+		'(' || char == // Disable this if using parameter completion
+		'[' || char ==
+		'{' || char ==
+		'\'' || char ==
+		'"'
 }
 
 func updateUserCommand(c Command) {
@@ -407,8 +470,10 @@ func setupTrayIcon() {
 		for {
 			select {
 			case <-menuLaunchUI.ClickedCh:
-				x := exec.Command("explorer", httpURL).Start()
-				fmt.Println(x)
+				err := exec.Command("explorer", httpURL).Start()
+				if err != nil {
+					log.Println(err)
+				}
 
 			case <-menuQuit.ClickedCh:
 				processInterrupted()

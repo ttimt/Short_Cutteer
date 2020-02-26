@@ -67,6 +67,14 @@ func tagInputLeftArrowDown() TagINPUT {
 	return tagInput
 }
 
+// Create tag input for LEFT ARROW key up
+func tagInputLeftArrowUp() TagINPUT {
+	tagInput := tagInputLeftArrowDown()
+	tagInput.Ki.DwFlags = KEYEVENTF_KEYUP
+
+	return tagInput
+}
+
 // Create tag input for UP ARROW key down
 func tagInputUpArrowDown() TagINPUT {
 	tagInput := tagInputKeyboard()
@@ -99,10 +107,34 @@ func tagInputBackspaceDown() TagINPUT {
 	return tagInput
 }
 
+// Create tag input for BACKSPACE key up
+func tagInputBackspaceUp() TagINPUT {
+	tagInput := tagInputBackspaceDown()
+	tagInput.Ki.DwFlags = KEYEVENTF_KEYUP
+
+	return tagInput
+}
+
+// Create tag input for DELETE key
+func tagInputDeleteDown() TagINPUT {
+	tagInput := tagInputKeyboard()
+	tagInput.Ki.WVk = VK_DELETE
+
+	return tagInput
+}
+
 // Create tag input for TAB key
 func tagInputTabDown() TagINPUT {
 	tagInput := tagInputKeyboard()
 	tagInput.Ki.WVk = VK_TAB
+
+	return tagInput
+}
+
+// Create tag input for CAPS key
+func tagInputCapsDown() TagINPUT {
+	tagInput := tagInputKeyboard()
+	tagInput.Ki.WVk = VK_CAPITAL
 
 	return tagInput
 }

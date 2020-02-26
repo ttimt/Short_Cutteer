@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	. "github.com/ttimt/Short_Cutteer/hook/windows"
@@ -11,7 +12,7 @@ const (
 )
 
 // Create []TagInputs that can be used in SendInput() function
-func createTagInputs(strToSend string) (tagInputs []TagINPUT) {
+func createTagInputs(strToSend string, isShiftEnabled, isCapsEnabled bool) (tagInputs []TagINPUT) {
 
 	// Store if character in iteration is SHIFT
 	var isShiftNeeded bool
@@ -24,10 +25,20 @@ func createTagInputs(strToSend string) (tagInputs []TagINPUT) {
 		// Get current tag
 		currentStrTag.Ki.WVk, _, isShiftNeeded = findAllKeyCode(0, c)
 
-		if isShiftNeeded {
+		// Temporary remove caps lock state if caps lock is on
+		if isCapsEnabled {
+			tagInputs = append(tagInputs, tagInputCapsDown())
+		}
+
+		if isShiftNeeded && !isShiftEnabled {
 			tagInputs = append(tagInputs, tagInputShiftDown(), currentStrTag, tagInputShiftUp())
 		} else if currentStrTag.Ki.WVk != 0 {
 			tagInputs = append(tagInputs, currentStrTag)
+		}
+
+		// Restore caps lock state
+		if isCapsEnabled {
+			tagInputs = append(tagInputs, tagInputCapsDown())
 		}
 	}
 
@@ -275,14 +286,30 @@ func findNonShiftKeyCode(k uint16, c rune, isCapitalLetter ...bool) (keyCode WOR
 // Ex: To insert left arrow 5 times, do:
 // multiplyTagInputKey(tagInputLeftArrowDown(), 5)
 //
-func multiplyTagInputKey(tagInput TagINPUT, multiplier int) []TagINPUT {
-	tagInputs := make([]TagINPUT, multiplier)
+func multiplyTagInputKey(tagInputs []TagINPUT, multiplier int) []TagINPUT {
+	tagInputsLength := len(tagInputs)
 
-	for k := range tagInputs {
-		tagInputs[k] = tagInput
+	newTagInputs := make([]TagINPUT, multiplier*tagInputsLength)
+
+	if tagInputsLength == 0 {
+		return newTagInputs
 	}
 
-	return tagInputs
+	i := 0
+
+	for k := range newTagInputs {
+		fmt.Println(i, tagInputsLength, multiplier, len(newTagInputs))
+		fmt.Println(tagInputs[i])
+		newTagInputs[k] = tagInputs[i]
+
+		if i+1 < tagInputsLength {
+			i++
+		} else {
+			i = 0
+		}
+	}
+
+	return newTagInputs
 }
 
 // Process the return value from GetKeyState.
@@ -297,7 +324,9 @@ func getKeyStateBool(state SHORT, checkToggle ...bool) bool {
 	return state < 0
 }
 
-// Check whether key is a capital letter
+// Check whether key is a capital letter:
+// First state is SHIFT state
+// Second state is CAPS state
 func IsCapitalLetterEnabled(shiftKeyState, capsLockKeyState bool) bool {
 	if !capsLockKeyState && !shiftKeyState || capsLockKeyState && shiftKeyState {
 		return false
