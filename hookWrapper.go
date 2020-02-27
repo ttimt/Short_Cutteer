@@ -21,9 +21,14 @@ func createTagInputs(strToSend string, isShiftEnabled, isCapsEnabled bool) (tagI
 
 		// Store the current tag input
 		currentStrTag := tagInputKeyboard()
+		currentStrTagUp := tagInputKeyboard()
 
 		// Get current tag
 		currentStrTag.Ki.WVk, _, isShiftNeeded = findAllKeyCode(0, c)
+
+		// Up key
+		currentStrTagUp.Ki.WVk, _, isShiftNeeded = findAllKeyCode(0, c)
+		currentStrTagUp.Ki.DwFlags = KEYEVENTF_KEYUP
 
 		// Temporary remove caps lock state if caps lock is on
 		if isCapsEnabled {
@@ -33,7 +38,7 @@ func createTagInputs(strToSend string, isShiftEnabled, isCapsEnabled bool) (tagI
 		if isShiftNeeded && !isShiftEnabled {
 			tagInputs = append(tagInputs, tagInputShiftDown(), currentStrTag, tagInputShiftUp())
 		} else if currentStrTag.Ki.WVk != 0 {
-			tagInputs = append(tagInputs, currentStrTag)
+			tagInputs = append(tagInputs, currentStrTag, currentStrTagUp)
 		}
 
 		// Restore caps lock state

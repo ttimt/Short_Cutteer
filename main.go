@@ -41,7 +41,7 @@ const (
 
 	dbPath = "db"
 
-	httpPort = 8080
+	httpPort = 8081
 
 	messageKindCommand     = "command"
 	messageOperationRead   = "read"
@@ -154,29 +154,34 @@ func processHook() {
 			switch char {
 			case '(':
 				// Parenthesis
-				tagInputs = createTagInputs("  )", isShiftEnabled, isCapsEnabled)
+				tagInputs = createTagInputs(" )", isShiftEnabled, isCapsEnabled)
 				tagInputs = append(tagInputs, tagInputLeftArrowDown(), tagInputLeftArrowUp(), tagInputLeftArrowDown())
 			case '{':
 				// Scope body
-				tagInputs = createTagInputs(windowsNewLine+windowsNewLine, isShiftEnabled, isCapsEnabled)
-				tagInputs = append(tagInputs, tagInputBackspaceDown(), tagInputBackspaceUp())
+				tagInputs = createTagInputs(windowsNewLine, isShiftEnabled, isCapsEnabled)
 				tagInputs = append(tagInputs, createTagInputs("}", isShiftEnabled, isCapsEnabled)...)
-				tagInputs = append(tagInputs, tagInputLeftArrowDown(), tagInputLeftArrowUp(), tagInputLeftArrowDown())
+				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+				tagInputs = append(tagInputs, createTagInputs(windowsNewLine, isShiftEnabled, isCapsEnabled)...)
+				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+				tagInputs = append(tagInputs, createTagInputs("  ", isShiftEnabled, isCapsEnabled)...)
+				fmt.Println("scope", tagInputs)
 			case '[':
 				tagInputs = createTagInputs("]", isShiftEnabled, isCapsEnabled)
 				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+				autoCompleteJustDone = true
 			case '\'':
 				tagInputs = createTagInputs("'", isShiftEnabled, isCapsEnabled)
 				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+				autoCompleteJustDone = true
 			case '"':
 				tagInputs = createTagInputs("\"", isShiftEnabled, isCapsEnabled)
 				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+				autoCompleteJustDone = true
 			default:
 				panic("Auto complete not match with isAutoComplete(char) function!")
 			}
 
 			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
-			autoCompleteJustDone = true
 			continue
 		}
 
@@ -201,7 +206,7 @@ func processHook() {
 
 			if autoCompleteJustDone {
 				// Send input
-				tagInputs := []TagINPUT{tagInputDeleteDown(), tagInputBackspaceDown()}
+				tagInputs := []TagINPUT{tagInputDeleteDown()}
 				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
 			}
 		case '\r':
@@ -211,9 +216,6 @@ func processHook() {
 			if str, ok := userCommands[bufferStr]; ok {
 				// Send input
 				tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
-				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
-			} else {
-				tagInputs := []TagINPUT{tagInputTabDown()}
 				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
 			}
 
@@ -226,15 +228,12 @@ func processHook() {
 
 				tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
 				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
-			} else {
-				tagInputs := createTagInputs(" ", isShiftEnabled, isCapsEnabled)
-				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
 			}
 
 			bufferStr = ""
 		default:
 			// If buffer full, trim
-			if len(bufferStr) >= maxBufferLen {
+			if len(bufferStr) >= maxBufferLen && len(bufferStr) > 0 {
 				bufferStr = bufferStr[1:]
 			}
 
