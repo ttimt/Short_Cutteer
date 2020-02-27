@@ -162,9 +162,8 @@ func processHook() {
 				tagInputs = append(tagInputs, createTagInputs("}", isShiftEnabled, isCapsEnabled)...)
 				tagInputs = append(tagInputs, tagInputLeftArrowDown())
 				tagInputs = append(tagInputs, createTagInputs(windowsNewLine, isShiftEnabled, isCapsEnabled)...)
-				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+				tagInputs = append(tagInputs, tagInputUpArrowDown())
 				tagInputs = append(tagInputs, createTagInputs("  ", isShiftEnabled, isCapsEnabled)...)
-				fmt.Println("scope", tagInputs)
 			case '[':
 				tagInputs = createTagInputs("]", isShiftEnabled, isCapsEnabled)
 				tagInputs = append(tagInputs, tagInputLeftArrowDown())
