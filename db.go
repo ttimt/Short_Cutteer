@@ -21,8 +21,11 @@ var (
 
 // Initialize collections and indexes
 func setupDB() {
+	// Track if command collection exists
+	existCommandCollection := myDB.ColExists(dbCollectionCommand)
+
 	// Create collection 'Commands' if does not exists
-	if !myDB.ColExists(dbCollectionCommand) {
+	if !existCommandCollection {
 		// Create collection "Commands"
 		if err := myDB.Create(dbCollectionCommand); err != nil {
 			panic(err)
@@ -33,7 +36,7 @@ func setupDB() {
 	collectionCommands = myDB.Use(dbCollectionCommand)
 
 	// Create index "title" for querying in 'Commands'
-	if !myDB.ColExists(dbCollectionCommand) {
+	if !existCommandCollection {
 		if err := collectionCommands.Index([]string{dbCollectionCommandFieldTitle}); err != nil {
 			panic(err)
 		}
