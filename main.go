@@ -18,14 +18,16 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/gorilla/websocket"
+
+	"github.com/HouzuoGuo/tiedot/db"
 
 	"github.com/ttimt/systray"
 
 	_ "github.com/HouzuoGuo/tiedot/db"
 	_ "github.com/lxn/walk"
 
+	. "github.com/ttimt/Short_Cutteer/hook"
 	. "github.com/ttimt/Short_Cutteer/hook/windows"
 	icon "github.com/ttimt/Short_Cutteer/icons"
 )
@@ -43,10 +45,17 @@ const (
 
 	httpPort = 8081
 
+	windowsNewLine = "\r\n"
+
 	messageKindCommand     = "command"
 	messageOperationRead   = "read"
 	messageOperationWrite  = "write"
 	messageOperationDelete = "delete"
+
+	nrOfKeys = 129 // Number of possible keys
+
+	invalidRune = -1
+	invalidWord = 0
 )
 
 var (
@@ -67,6 +76,12 @@ var (
 	t *template.Template
 
 	autoCompleteJustDone bool
+
+	// Store hook keys
+	keys                      []Key
+	keysByKeyCodeWithShift    = make(map[uint16]*Key)
+	keysByKeyCodeWithoutShift = make(map[uint16]*Key)
+	keysByChar                = make(map[rune]*Key)
 )
 
 type webSocketConnection struct {
@@ -143,10 +158,10 @@ func processHook() {
 
 		shiftKeyState, _ := GetKeyState(VK_SHIFT)
 		capsLockState, _ := GetKeyState(VK_CAPITAL)
-		isShiftEnabled := getKeyStateBool(shiftKeyState)
-		isCapsEnabled := getKeyStateBool(capsLockState, true)
+		isShiftEnabled := getKeyState(shiftKeyState)
+		isCapsEnabled := getKeyState(capsLockState, true)
 
-		_, char, _ := findAllKeyCode(uint16(currentKeyStroke), 0, isShiftEnabled, isCapsEnabled)
+		char := getKeyByKeyCode(uint16(currentKeyStroke), isShiftEnabled).Char
 
 		if isAutoComplete(char) {
 			// Send the auto complete
@@ -155,26 +170,26 @@ func processHook() {
 			case '(':
 				// Parenthesis
 				tagInputs = createTagInputs(" )", isShiftEnabled, isCapsEnabled)
-				tagInputs = append(tagInputs, tagInputLeftArrowDown(), tagInputLeftArrowUp(), tagInputLeftArrowDown())
+				tagInputs = append(tagInputs, getKeyByKeyCode(VK_LEFT).KeyPress(2)...)
 			case '{':
 				// Scope body
 				tagInputs = createTagInputs(windowsNewLine, isShiftEnabled, isCapsEnabled)
 				tagInputs = append(tagInputs, createTagInputs("}", isShiftEnabled, isCapsEnabled)...)
-				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+				tagInputs = append(tagInputs, getKeyByKeyCode(VK_LEFT).KeyPress()...)
 				tagInputs = append(tagInputs, createTagInputs(windowsNewLine, isShiftEnabled, isCapsEnabled)...)
-				tagInputs = append(tagInputs, tagInputUpArrowDown())
+				tagInputs = append(tagInputs, getKeyByKeyCode(VK_LEFT).KeyPress()...)
 				tagInputs = append(tagInputs, createTagInputs("  ", isShiftEnabled, isCapsEnabled)...)
 			case '[':
 				tagInputs = createTagInputs("]", isShiftEnabled, isCapsEnabled)
-				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+				tagInputs = append(tagInputs, getKeyByKeyCode(VK_LEFT).KeyPress()...)
 				autoCompleteJustDone = true
 			case '\'':
 				tagInputs = createTagInputs("'", isShiftEnabled, isCapsEnabled)
-				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+				tagInputs = append(tagInputs, getKeyByKeyCode(VK_LEFT).KeyPress()...)
 				autoCompleteJustDone = true
 			case '"':
 				tagInputs = createTagInputs("\"", isShiftEnabled, isCapsEnabled)
-				tagInputs = append(tagInputs, tagInputLeftArrowDown())
+				tagInputs = append(tagInputs, getKeyByKeyCode(VK_LEFT).KeyPress()...)
 				autoCompleteJustDone = true
 			default:
 				panic("Auto complete not match with isAutoComplete(char) function!")
@@ -205,7 +220,7 @@ func processHook() {
 
 			if autoCompleteJustDone {
 				// Send input
-				tagInputs := []TagINPUT{tagInputDeleteDown()}
+				tagInputs := getKeyByKeyCode(VK_DELETE).KeyPress()
 				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
 			}
 		case '\r':
@@ -222,7 +237,7 @@ func processHook() {
 		case ' ':
 			if str, ok := userCommands[bufferStr]; ok {
 				// Send input
-				tagInputsBackspace := multiplyTagInputKey([]TagINPUT{tagInputBackspaceDown(), tagInputBackspaceUp()}, len(bufferStr)+1)
+				tagInputsBackspace := getKeyByKeyCode(VK_BACK).KeyPress(len(bufferStr) + 1)
 				_, _ = SendInput(uint(len(tagInputsBackspace)), (*LPINPUT)(&tagInputsBackspace[0]), int(unsafe.Sizeof(tagInputsBackspace[0])))
 
 				tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
@@ -237,8 +252,6 @@ func processHook() {
 			}
 
 			bufferStr += string(char)
-
-			//  TODO CHECK SHORTCUT KET EXIST EX: CTRL + ALT + F
 		}
 
 		autoCompleteJustDone = false
@@ -302,6 +315,13 @@ func init() {
 	myDB, err = db.OpenDB(dbPath)
 	if err != nil {
 		panic(err)
+	}
+
+	// Create all hook keys
+	createAllHookKeys()
+
+	for k := range keysByKeyCodeWithoutShift {
+		fmt.Printf("%0x - %s - %v \n", keysByKeyCodeWithoutShift[k].KeyCode, string(keysByKeyCodeWithoutShift[k].Char), keysByKeyCodeWithoutShift[k].IsShiftNeeded)
 	}
 }
 
