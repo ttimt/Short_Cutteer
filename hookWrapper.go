@@ -1,7 +1,7 @@
 package main
 
 import (
-	"strconv"
+	"log"
 
 	. "github.com/ttimt/Short_Cutteer/hook"
 	. "github.com/ttimt/Short_Cutteer/hook/windows"
@@ -10,28 +10,21 @@ import (
 // Create []TagInputs that can be used in SendInput() function to send keys that
 // can be represented in string or escape sequences
 func createTagInputs(strToSend string, isShiftEnabled, isCapsEnabled bool) (tagInputs []TagINPUT) {
-	// Capital Key
-	charKey := getKeyByKeyCode(VK_CAPITAL)
-
 	// Shift Key
 	shiftKey := getKeyByKeyCode(VK_SHIFT)
 
 	for _, c := range strToSend {
 		key := getKeyByChar(c)
 
-		if key.IsShiftNeeded && !isShiftEnabled {
+		if key.IsShiftNeeded && !isShiftEnabled || key.IsCapitalLetter && !IsCapitalLetterEnabled(isShiftEnabled, isCapsEnabled) {
 			tagInputs = append(tagInputs, shiftKey.KeyHold())
-		} else if key.IsCapitalLetter && !IsCapitalLetterEnabled(isShiftEnabled, isCapsEnabled) {
-			tagInputs = append(tagInputs, charKey.KeyPress()...)
 		}
 
 		tagInputs = append(tagInputs, key.KeyPress()...)
 
 		// Release all keys
-		if key.IsShiftNeeded && !isShiftEnabled {
+		if key.IsShiftNeeded && !isShiftEnabled || key.IsCapitalLetter && !IsCapitalLetterEnabled(isShiftEnabled, isCapsEnabled) {
 			tagInputs = append(tagInputs, shiftKey.KeyRelease())
-		} else if key.IsCapitalLetter && !IsCapitalLetterEnabled(isShiftEnabled, isCapsEnabled) {
-			tagInputs = append(tagInputs, charKey.KeyPress()...)
 		}
 	}
 
@@ -62,18 +55,25 @@ func IsCapitalLetterEnabled(shiftKeyState, capsLockKeyState bool) bool {
 }
 
 // Search through existing hook keys by its key code.
-// Input second parameter as true if shift key is needed for that key.
-func getKeyByKeyCode(keyCode uint16, isShiftNeeded ...bool) *Key {
-	var key *Key
+// Input second parameter as true if shift key enabled.
+// Input second parameter as true if capital key enabled
+func getKeyByKeyCode(keyCode uint16, modifiers ...bool) *Key {
+	if len(modifiers) > 2 {
+		panic("Error input parameter to getKeyByKeyCode")
+	}
 
-	if len(isShiftNeeded) > 0 {
+	var key *Key
+	// TODO check for caps lock
+	// TODO dont panic if cant find key
+	if len(modifiers) > 0 && (modifiers[0]) {
 		key, _ = keysByKeyCodeWithShift[keyCode]
 	} else {
 		key, _ = keysByKeyCodeWithoutShift[keyCode]
 	}
 
 	if key == nil {
-		panic("Key code does not exist:" + strconv.Itoa(int(keyCode)))
+		log.Printf("Key code does not exist: %0x", keyCode)
+		panic("")
 	}
 
 	return key
@@ -204,16 +204,16 @@ func createAllHookKeys() {
 	incrementCounter(CreateHookKey(VK_Y, 'y'))
 	incrementCounter(CreateHookKey(VK_Z, 'Z', IsCapitalLetter()))
 	incrementCounter(CreateHookKey(VK_Z, 'z'))
-	incrementCounter(CreateHookKey(VK_NUMPAD0, 0))
-	incrementCounter(CreateHookKey(VK_NUMPAD1, 1))
-	incrementCounter(CreateHookKey(VK_NUMPAD2, 2))
-	incrementCounter(CreateHookKey(VK_NUMPAD3, 3))
-	incrementCounter(CreateHookKey(VK_NUMPAD4, 4))
-	incrementCounter(CreateHookKey(VK_NUMPAD5, 5))
-	incrementCounter(CreateHookKey(VK_NUMPAD6, 6))
-	incrementCounter(CreateHookKey(VK_NUMPAD7, 7))
-	incrementCounter(CreateHookKey(VK_NUMPAD8, 8))
-	incrementCounter(CreateHookKey(VK_NUMPAD9, 9))
+	incrementCounter(CreateHookKey(VK_NUMPAD0, '0'))
+	incrementCounter(CreateHookKey(VK_NUMPAD1, '1'))
+	incrementCounter(CreateHookKey(VK_NUMPAD2, '2'))
+	incrementCounter(CreateHookKey(VK_NUMPAD3, '3'))
+	incrementCounter(CreateHookKey(VK_NUMPAD4, '4'))
+	incrementCounter(CreateHookKey(VK_NUMPAD5, '5'))
+	incrementCounter(CreateHookKey(VK_NUMPAD6, '6'))
+	incrementCounter(CreateHookKey(VK_NUMPAD7, '7'))
+	incrementCounter(CreateHookKey(VK_NUMPAD8, '8'))
+	incrementCounter(CreateHookKey(VK_NUMPAD9, '9'))
 	incrementCounter(CreateHookKey(VK_MULTIPLY, '*'))
 	incrementCounter(CreateHookKey(VK_ADD, '+'))
 	incrementCounter(CreateHookKey(VK_SUBTRACT, '-'))
