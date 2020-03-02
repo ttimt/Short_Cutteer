@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	dbPath                          = "db"
 	dbCollectionCommand             = "Commands"
 	dbCollectionCommandFieldTitle   = "title"
 	dbCollectionCommandFieldCommand = "command"
@@ -18,6 +19,19 @@ var (
 	myDB               *db.DB
 	collectionCommands *db.Col
 )
+
+// Open the DB from the path
+func initializeDB() {
+	// Load DB
+	// Create or open the database
+	var err error
+	if myDB, err = db.OpenDB(dbPath); err != nil {
+		panic(err)
+	}
+
+	// Setup DB
+	setupDB()
+}
 
 // Initialize collections and indexes
 func setupDB() {
@@ -46,8 +60,8 @@ func setupDB() {
 	readAndImportFromDB()
 }
 
-// Reset collection by the given name in DB
-func resetDBCollection(nameCollection string) {
+// Reset collection by the given name in DB: resetDBCollection
+func _(nameCollection string) {
 	// Drop the collection
 	_ = myDB.Drop(nameCollection)
 }
