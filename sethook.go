@@ -19,6 +19,7 @@ var (
 	currentKeyStrokeSignal = make(chan rune)
 	hhook                  HHOOK
 	autoCompleteJustDone   bool
+	bufferStr              string
 
 	// Store hook keys
 	keys                            []Key
@@ -124,47 +125,7 @@ func processHook() {
 
 		// User pre-collectionCommands can be CTRL, ALT, SHIFT and 1 letter afterwards
 		// User can create shortcut MODIFIER + a key or text collectionCommands + tab or space (remove collectionCommands)
-		switch char {
-		case '\b':
-			if len(bufferStr) > 0 {
-				bufferStr = bufferStr[:len(bufferStr)-1]
-			}
-
-			if autoCompleteJustDone {
-				// Send input
-				tagInputs := getKeyByKeyCode(VK_DELETE).KeyPress()
-				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
-			}
-		case '\r':
-			bufferStr += windowsNewLine
-			bufferStr = ""
-		case '\t':
-			if str, ok := userCommands[bufferStr]; ok {
-				// Send input
-				tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
-				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
-			}
-
-			bufferStr = ""
-		case ' ':
-			if str, ok := userCommands[bufferStr]; ok {
-				// Send input
-				tagInputsBackspace := getKeyByKeyCode(VK_BACK).KeyPress(len(bufferStr) + 1)
-				_, _ = SendInput(uint(len(tagInputsBackspace)), (*LPINPUT)(&tagInputsBackspace[0]), int(unsafe.Sizeof(tagInputsBackspace[0])))
-
-				tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
-				_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
-			}
-
-			bufferStr = ""
-		default:
-			// If buffer full, trim
-			if len(bufferStr) >= maxBufferLen && len(bufferStr) > 0 {
-				bufferStr = bufferStr[1:]
-			}
-
-			bufferStr += string(char)
-		}
+		readSingleCharacter(char, isShiftEnabled, isCapsEnabled)
 
 		autoCompleteJustDone = false
 		fmt.Println("Buffer string:", bufferStr)
@@ -178,5 +139,50 @@ func processHook() {
 		// If brackets or quotes, just can copy text (mouse + keyboard to detect there is text selected),
 		//      copy, left bracket/quote, space, paste, space, right bracket/quote
 		// If 'shortcut key', copy and format and paste
+	}
+}
+
+// Read single character and update buffer
+func readSingleCharacter(char rune, isShiftEnabled, isCapsEnabled bool) {
+	switch char {
+	case '\b':
+		if len(bufferStr) > 0 {
+			bufferStr = bufferStr[:len(bufferStr)-1]
+		}
+
+		if autoCompleteJustDone {
+			// Send input
+			tagInputs := getKeyByKeyCode(VK_DELETE).KeyPress()
+			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+		}
+	case '\r':
+		bufferStr += windowsNewLine
+		bufferStr = ""
+	case '\t':
+		if str, ok := userCommands[bufferStr]; ok {
+			// Send input
+			tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
+			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+		}
+
+		bufferStr = ""
+	case ' ':
+		if str, ok := userCommands[bufferStr]; ok {
+			// Send input
+			tagInputsBackspace := getKeyByKeyCode(VK_BACK).KeyPress(len(bufferStr) + 1)
+			_, _ = SendInput(uint(len(tagInputsBackspace)), (*LPINPUT)(&tagInputsBackspace[0]), int(unsafe.Sizeof(tagInputsBackspace[0])))
+
+			tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
+			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+		}
+
+		bufferStr = ""
+	default:
+		// If buffer full, trim
+		if len(bufferStr) >= maxCommandLen && len(bufferStr) > 0 {
+			bufferStr = bufferStr[1:]
+		}
+
+		bufferStr += string(char)
 	}
 }

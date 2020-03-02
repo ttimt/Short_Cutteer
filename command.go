@@ -1,9 +1,8 @@
 package main
 
 var (
-	userCommands = make(map[string]*Command)
-	maxBufferLen int
-	bufferStr    string
+	userCommands  = make(map[string]*Command)
+	maxCommandLen int
 )
 
 type Command struct {
@@ -16,8 +15,8 @@ type Command struct {
 func updateUserCommand(c Command) {
 	userCommands[c.Command] = &c
 
-	if len(c.Command) > maxBufferLen {
-		maxBufferLen = len(c.Command)
+	if len(c.Command) > maxCommandLen {
+		maxCommandLen = len(c.Command)
 	}
 }
 
