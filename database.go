@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	dbPath                          = "db"
 	dbCollectionCommand             = "Commands"
 	dbCollectionCommandFieldTitle   = "title"
 	dbCollectionCommandFieldCommand = "command"
@@ -19,10 +20,26 @@ var (
 	collectionCommands *db.Col
 )
 
+// Open the DB from the path
+func initializeDB() {
+	// Load DB
+	// Create or open the database
+	var err error
+	if myDB, err = db.OpenDB(dbPath); err != nil {
+		panic(err)
+	}
+
+	// Setup DB
+	setupDB()
+}
+
 // Initialize collections and indexes
 func setupDB() {
+	// Track if command collection exists
+	existCommandCollection := myDB.ColExists(dbCollectionCommand)
+
 	// Create collection 'Commands' if does not exists
-	if !myDB.ColExists(dbCollectionCommand) {
+	if !existCommandCollection {
 		// Create collection "Commands"
 		if err := myDB.Create(dbCollectionCommand); err != nil {
 			panic(err)
@@ -33,7 +50,7 @@ func setupDB() {
 	collectionCommands = myDB.Use(dbCollectionCommand)
 
 	// Create index "title" for querying in 'Commands'
-	if !myDB.ColExists(dbCollectionCommand) {
+	if !existCommandCollection {
 		if err := collectionCommands.Index([]string{dbCollectionCommandFieldTitle}); err != nil {
 			panic(err)
 		}
@@ -43,8 +60,8 @@ func setupDB() {
 	readAndImportFromDB()
 }
 
-// Reset collection by the given name in DB
-func resetDBCollection(nameCollection string) {
+// Reset collection by the given name in DB: resetDBCollection
+func _(nameCollection string) {
 	// Drop the collection
 	_ = myDB.Drop(nameCollection)
 }

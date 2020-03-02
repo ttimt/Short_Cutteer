@@ -1,295 +1,45 @@
 package main
 
 import (
-	"strings"
+	"log"
 
+	. "github.com/ttimt/Short_Cutteer/hook"
 	. "github.com/ttimt/Short_Cutteer/hook/windows"
 )
 
-const (
-	windowsNewLine = "\r\n"
-)
-
-// Create []TagInputs that can be used in SendInput() function
-func createTagInputs(strToSend string) (tagInputs []TagINPUT) {
-
-	// Store if character in iteration is SHIFT
-	var isShiftNeeded bool
+// Create []TagInputs that can be used in SendInput() function to send keys that
+// can be represented in string or escape sequences
+func createTagInputs(strToSend string, isShiftEnabled, isCapsEnabled bool) (tagInputs []TagINPUT) {
+	// Shift Key
+	shiftKey := getKeyByKeyCode(VK_SHIFT)
 
 	for _, c := range strToSend {
+		key := getKeyByChar(c)
 
-		// Store the current tag input
-		currentStrTag := tagInputKeyboard()
+		if key == nil {
+			continue
+		}
 
-		// Get current tag
-		currentStrTag.Ki.WVk, _, isShiftNeeded = findAllKeyCode(0, c)
+		if key.IsShiftNeeded && !isShiftEnabled || key.IsCapitalLetter && !IsCapitalLetterEnabled(isShiftEnabled, isCapsEnabled) {
+			tagInputs = append(tagInputs, shiftKey.KeyHold())
+		}
 
-		if isShiftNeeded {
-			tagInputs = append(tagInputs, tagInputShiftDown(), currentStrTag, tagInputShiftUp())
-		} else if currentStrTag.Ki.WVk != 0 {
-			tagInputs = append(tagInputs, currentStrTag)
+		tagInputs = append(tagInputs, key.KeyPress()...)
+
+		// Release all keys
+		if key.IsShiftNeeded && !isShiftEnabled || key.IsCapitalLetter && !IsCapitalLetterEnabled(isShiftEnabled, isCapsEnabled) {
+			tagInputs = append(tagInputs, shiftKey.KeyRelease())
 		}
 	}
 
 	return
-}
-
-// Find listed key code from the given character.
-//
-// If sending text to keyboard,
-// fill the 2nd parameter, and use only 1st and 3rd return values.
-//
-// If receiving text from keyboard, fill 1st, 3rd and 4th paramters
-// (3rd param: GetKeyState SHIFT_KEY, 4th param: GetKeyState CAPS_LOCK),
-// and use only 2nd return value.
-//
-// Default values for input and return values:
-// keyCode: 0
-// char: -1
-//
-// Paramters: Key code, character, is shift enabled, is caps lock enabled.
-//
-// Return values: Key code, character, is shift needed
-func findAllKeyCode(k uint16, c rune, isCapitalEnabled ...bool) (keyCode WORD, char rune, isShiftNeeded bool) {
-	paramBoolLen := len(isCapitalEnabled)
-
-	if paramBoolLen == 2 && k == 0 || paramBoolLen == 0 && c == -1 {
-		panic("Wrong parameter for function findAllKeyCode")
-	}
-
-	// Receiving text
-	if paramBoolLen > 0 {
-		isCapitalLetter := IsCapitalLetterEnabled(isCapitalEnabled[0], isCapitalEnabled[1])
-
-		if isCapitalEnabled[0] {
-			keyCode, char = findShiftKeyCode(k, c, isCapitalLetter)
-		} else {
-			keyCode, char = findNonShiftKeyCode(k, c, isCapitalLetter)
-		}
-	} else {
-		// Sending text
-		keyCode, char = findShiftKeyCode(k, c)
-
-		if isShiftNeeded = keyCode != 0; isShiftNeeded {
-			return
-		}
-
-		keyCode, char = findNonShiftKeyCode(k, c)
-	}
-
-	return
-}
-
-// SHIFT needed
-func findShiftKeyCode(k uint16, c rune, isCapitalLetter ...bool) (keyCode WORD, char rune) {
-	if k != 0 && len(isCapitalLetter) == 0 {
-		panic("No capital letter state received when receiving keystroke")
-	}
-
-	// Use ASCII value to identify character
-	switch {
-	case k == VK_ONE, c == 33: // Exclamation mark !
-		keyCode = VK_ONE
-		char = 33
-
-	case k == VK_OEM_7, c == 34: // Double quote
-		keyCode = VK_OEM_7
-		char = 34
-
-	case k == VK_THREE, c == 35: // Hash/Sharp #
-		keyCode = VK_THREE
-		char = 35
-
-	case k == VK_FOUR, c == 36: // Dollar $
-		keyCode = VK_FOUR
-		char = 36
-
-	case k == VK_FIVE, c == 37: // Percent %
-		keyCode = VK_FIVE
-		char = 37
-
-	case k == VK_SEVEN, c == 38: // Ampersand &
-		keyCode = VK_SEVEN
-		char = 38
-
-	case k == VK_NINE, c == 40: // Left parenthesis (
-		keyCode = VK_NINE
-		char = 40
-
-	case k == VK_ZERO, c == 41: // Right parenthesis )
-		keyCode = VK_ZERO
-		char = 41
-
-	case k == VK_EIGHT, c == 42: // Asterisk *
-		keyCode = VK_EIGHT
-		char = 42
-
-	case k == VK_OEM_PLUS, c == 43: // Plus +
-		keyCode = VK_OEM_PLUS
-		char = 43
-
-	case k == VK_OEM_1, c == 58: // Colon :
-		keyCode = VK_OEM_1
-		char = 58
-
-	case k == VK_OEM_COMMA, c == 60: // Left angled bracket <
-		keyCode = VK_OEM_COMMA
-		char = 60
-
-	case k == VK_OEM_PERIOD, c == 62: // Right angled bracket <
-		keyCode = VK_OEM_PERIOD
-		char = 62
-
-	case k == VK_OEM_2, c == 63: // Question mark ?
-		keyCode = VK_OEM_2
-		char = 63
-
-	case k == VK_TWO, c == 64: // At @
-		keyCode = VK_TWO
-		char = 64
-
-	case VK_A <= k && k <= VK_Z, 65 <= c && c <= 90: // Capital letter: A-Z
-		keyCode = WORD(c)
-		char = rune(k)
-
-		// If shift pressed and caps lock toggled
-		if len(isCapitalLetter) > 0 && !isCapitalLetter[0] {
-			char = rune(strings.ToLower(string(k))[0])
-		}
-
-	case k == VK_SIX, c == 94: // Caret ^
-		keyCode = VK_SIX
-		char = 94
-
-	case k == VK_OEM_MINUS, c == 95: // Underscore _
-		keyCode = VK_OEM_MINUS
-		char = 95
-
-	case k == VK_OEM_4, c == 123: // Left brace {
-		keyCode = VK_OEM_4
-		char = 123
-
-	case k == VK_OEM_5, c == 124: // Vertical bar/Pipe |
-		keyCode = VK_OEM_5
-		char = 124
-
-	case k == VK_OEM_6, c == 125: // Right brace }
-		keyCode = VK_OEM_6
-		char = 125
-
-	case k == VK_OEM_3, c == 126: // Tilde ~
-		keyCode = VK_OEM_3
-		char = 126
-
-	default:
-		// Don't process key if not specified above
-		// Or keys like backspace, delete, and weird symbols will be added to the buffer
-		return 0, -1
-	}
-
-	return
-}
-
-// SHIFT not needed
-func findNonShiftKeyCode(k uint16, c rune, isCapitalLetter ...bool) (keyCode WORD, char rune) {
-	if k != 0 && len(isCapitalLetter) == 0 {
-		panic("No capital letter state received when receiving keystroke")
-	}
-
-	// Use ASCII value to identify character
-	switch {
-	case k == VK_BACK, c == 8, // Backspace '\b'
-		k == VK_TAB, c == 9, // horizontal tab '\t'
-		k == VK_SPACE, c == 32, // spacebar
-		k == VK_RETURN, c == 13, // CRLF - only carriage return for ENTER key '\r'
-		VK_ZERO <= k && k <= VK_NINE, 48 <= c && c <= 57: // 0-9
-		keyCode = WORD(c)
-		char = rune(k)
-
-	case k == VK_OEM_7, c == 39: // Single quote
-		keyCode = VK_OEM_7
-		char = 39
-
-	case k == VK_OEM_COMMA, c == 44: // Comma
-		keyCode = VK_OEM_COMMA
-		char = 44
-
-	case k == VK_OEM_MINUS, c == 45: // Hypen or minus
-		keyCode = VK_OEM_MINUS
-		char = 45
-
-	case k == VK_OEM_PERIOD, c == 46: // Period
-		keyCode = VK_OEM_PERIOD
-		char = 46
-
-	case k == VK_OEM_2, c == 47: // Slash or divide '/'
-		keyCode = VK_OEM_2
-		char = 47
-
-	case k == VK_OEM_1, c == 59: // Semicolon
-		keyCode = VK_OEM_1
-		char = 59
-
-	case k == VK_OEM_PLUS, c == 61: // Equal
-		keyCode = VK_OEM_PLUS
-		char = 61
-
-	case k == VK_OEM_4, c == 91: // Opening square bracket
-		keyCode = VK_OEM_4
-		char = 91
-
-	case k == VK_OEM_5, c == 92: // Backslash '\'
-		keyCode = VK_OEM_5
-		char = 92
-
-	case k == VK_OEM_6, c == 93: // Closing square bracket
-		keyCode = VK_OEM_6
-		char = 93
-
-	case k == VK_OEM_3, c == 96: // Grave accent '`'
-		keyCode = VK_OEM_3
-		char = 96
-
-	case VK_A <= k && k <= VK_Z, 97 <= c && c <= 122: // Small letters: a-z
-		keyCode = WORD(strings.ToUpper(string(c))[0]) // Keyboard code equals capital letter value
-		char = rune(strings.ToLower(string(k))[0])
-
-		// If shift no pressed but caps lock toggled
-		if len(isCapitalLetter) > 0 && isCapitalLetter[0] {
-			char = rune(k)
-		}
-
-	case k == VK_DELETE, c == 127: // Grave accent '`'
-		keyCode = VK_DELETE
-		char = 127
-
-	default:
-		// Don't process key if not specified above
-		// Or keys like backspace, delete, and weird symbols will be added to the buffer
-		return 0, -1
-	}
-
-	return
-}
-
-// Ex: To insert left arrow 5 times, do:
-// multiplyTagInputKey(tagInputLeftArrowDown(), 5)
-//
-func multiplyTagInputKey(tagInput TagINPUT, multiplier int) []TagINPUT {
-	tagInputs := make([]TagINPUT, multiplier)
-
-	for k := range tagInputs {
-		tagInputs[k] = tagInput
-	}
-
-	return tagInputs
 }
 
 // Process the return value from GetKeyState.
 //
 // If the key state needed is not key down/up but key toggled like caps lock,
 // then pass in true in the second bool parameter
-func getKeyStateBool(state SHORT, checkToggle ...bool) bool {
+func getKeyState(state SHORT, checkToggle ...bool) bool {
 	if len(checkToggle) > 0 {
 		return state&1 == 1
 	}
@@ -297,11 +47,206 @@ func getKeyStateBool(state SHORT, checkToggle ...bool) bool {
 	return state < 0
 }
 
-// Check whether key is a capital letter
+// Check whether key is a capital letter:
+// First state is SHIFT state
+// Second state is CAPS state
 func IsCapitalLetterEnabled(shiftKeyState, capsLockKeyState bool) bool {
 	if !capsLockKeyState && !shiftKeyState || capsLockKeyState && shiftKeyState {
 		return false
 	}
 
 	return true
+}
+
+// Search through existing hook keys by its key code.
+// Input first parameter as true if shift key enabled.
+// Input second parameter as true if capital key enabled
+func getKeyByKeyCode(keyCode uint16, modifiers ...bool) *Key {
+	if len(modifiers) > 2 {
+		panic("Error input parameter to getKeyByKeyCode")
+	}
+
+	var key *Key
+
+	if len(modifiers) > 0 && (modifiers[0] || IsCapitalLetterEnabled(modifiers[0], modifiers[1])) {
+		key, _ = keysByKeyCodeWithShiftOrCapital[keyCode]
+	}
+
+	if key == nil || (!IsCapitalLetterEnabled(modifiers[0], modifiers[1]) && 65 <= key.Char && key.Char <= 90) {
+		key, _ = keysByKeyCodeWithoutShift[keyCode]
+	}
+
+	if key == nil {
+		log.Printf("Key code does not exist: 0x%0x", keyCode)
+	}
+
+	return key
+}
+
+// Search through existing hook keys by its char
+func getKeyByChar(char rune) *Key {
+	key, _ := keysByChar[char]
+
+	if key == nil {
+		log.Printf("Key code does not exist: %s", string(char))
+	}
+
+	return key
+}
+
+// Construct all necessary keys
+func createAllHookKeys() {
+	// Initialize memory
+	keys = make([]Key, nrOfKeys)
+
+	// Counter
+	i := 0
+
+	// Function to increment counter
+	incrementCounter := func(key Key) {
+		keys[i] = key
+
+		// Update maps
+		if key.IsShiftNeeded || key.IsCapitalLetter {
+			keysByKeyCodeWithShiftOrCapital[key.KeyCode] = &key
+		} else {
+			keysByKeyCodeWithoutShift[key.KeyCode] = &key
+		}
+
+		if key.Char != invalidRune {
+			keysByChar[key.Char] = &key
+		}
+
+		i++
+	}
+
+	incrementCounter(CreateHookKey(VK_BACK, '\b'))
+	incrementCounter(CreateHookKey(VK_TAB, '\t'))
+	incrementCounter(CreateHookKey(VK_RETURN, '\n'))
+	incrementCounter(CreateHookKey(VK_SHIFT, invalidRune))
+	incrementCounter(CreateHookKey(VK_CONTROL, invalidRune))
+	incrementCounter(CreateHookKey(VK_MENU, invalidRune))
+	incrementCounter(CreateHookKey(VK_CAPITAL, invalidRune))
+	incrementCounter(CreateHookKey(VK_ESCAPE, invalidRune))
+	incrementCounter(CreateHookKey(VK_SPACE, ' '))
+	incrementCounter(CreateHookKey(VK_END, invalidRune))
+	incrementCounter(CreateHookKey(VK_HOME, invalidRune))
+	incrementCounter(CreateHookKey(VK_LEFT, invalidRune))
+	incrementCounter(CreateHookKey(VK_UP, invalidRune))
+	incrementCounter(CreateHookKey(VK_RIGHT, invalidRune))
+	incrementCounter(CreateHookKey(VK_DOWN, invalidRune))
+	incrementCounter(CreateHookKey(VK_DELETE, invalidRune))
+	incrementCounter(CreateHookKey(VK_ZERO, '0'))
+	incrementCounter(CreateHookKey(VK_ZERO, ')', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_ONE, '1'))
+	incrementCounter(CreateHookKey(VK_ONE, '!', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_TWO, '2'))
+	incrementCounter(CreateHookKey(VK_TWO, '@', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_THREE, '3'))
+	incrementCounter(CreateHookKey(VK_THREE, '#', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_FOUR, '4'))
+	incrementCounter(CreateHookKey(VK_FOUR, '$', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_FIVE, '5'))
+	incrementCounter(CreateHookKey(VK_FIVE, '%', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_SIX, '6'))
+	incrementCounter(CreateHookKey(VK_SIX, '^', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_SEVEN, '7'))
+	incrementCounter(CreateHookKey(VK_SEVEN, '&', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_EIGHT, '8'))
+	incrementCounter(CreateHookKey(VK_EIGHT, '*', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_NINE, '9'))
+	incrementCounter(CreateHookKey(VK_NINE, '(', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_A, 'A', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_A, 'a'))
+	incrementCounter(CreateHookKey(VK_B, 'B', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_B, 'b'))
+	incrementCounter(CreateHookKey(VK_C, 'C', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_C, 'c'))
+	incrementCounter(CreateHookKey(VK_D, 'D', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_D, 'd'))
+	incrementCounter(CreateHookKey(VK_E, 'E', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_E, 'e'))
+	incrementCounter(CreateHookKey(VK_F, 'F', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_F, 'f'))
+	incrementCounter(CreateHookKey(VK_G, 'G', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_G, 'g'))
+	incrementCounter(CreateHookKey(VK_H, 'H', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_H, 'h'))
+	incrementCounter(CreateHookKey(VK_I, 'I', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_I, 'i'))
+	incrementCounter(CreateHookKey(VK_J, 'J', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_J, 'j'))
+	incrementCounter(CreateHookKey(VK_K, 'K', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_K, 'k'))
+	incrementCounter(CreateHookKey(VK_L, 'L', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_L, 'l'))
+	incrementCounter(CreateHookKey(VK_M, 'M', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_M, 'm'))
+	incrementCounter(CreateHookKey(VK_N, 'N', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_N, 'n'))
+	incrementCounter(CreateHookKey(VK_O, 'O', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_O, 'o'))
+	incrementCounter(CreateHookKey(VK_P, 'P', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_P, 'p'))
+	incrementCounter(CreateHookKey(VK_Q, 'Q', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_Q, 'q'))
+	incrementCounter(CreateHookKey(VK_R, 'R', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_R, 'r'))
+	incrementCounter(CreateHookKey(VK_S, 'S', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_S, 's'))
+	incrementCounter(CreateHookKey(VK_T, 'T', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_T, 't'))
+	incrementCounter(CreateHookKey(VK_U, 'U', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_U, 'u'))
+	incrementCounter(CreateHookKey(VK_V, 'V', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_V, 'v'))
+	incrementCounter(CreateHookKey(VK_W, 'W', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_W, 'w'))
+	incrementCounter(CreateHookKey(VK_X, 'X', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_X, 'x'))
+	incrementCounter(CreateHookKey(VK_Y, 'Y', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_Y, 'y'))
+	incrementCounter(CreateHookKey(VK_Z, 'Z', IsCapitalLetter()))
+	incrementCounter(CreateHookKey(VK_Z, 'z'))
+	incrementCounter(CreateHookKey(VK_NUMPAD0, '0'))
+	incrementCounter(CreateHookKey(VK_NUMPAD1, '1'))
+	incrementCounter(CreateHookKey(VK_NUMPAD2, '2'))
+	incrementCounter(CreateHookKey(VK_NUMPAD3, '3'))
+	incrementCounter(CreateHookKey(VK_NUMPAD4, '4'))
+	incrementCounter(CreateHookKey(VK_NUMPAD5, '5'))
+	incrementCounter(CreateHookKey(VK_NUMPAD6, '6'))
+	incrementCounter(CreateHookKey(VK_NUMPAD7, '7'))
+	incrementCounter(CreateHookKey(VK_NUMPAD8, '8'))
+	incrementCounter(CreateHookKey(VK_NUMPAD9, '9'))
+	incrementCounter(CreateHookKey(VK_MULTIPLY, '*'))
+	incrementCounter(CreateHookKey(VK_ADD, '+'))
+	incrementCounter(CreateHookKey(VK_SUBTRACT, '-'))
+	incrementCounter(CreateHookKey(VK_DECIMAL, '.'))
+	incrementCounter(CreateHookKey(VK_DIVIDE, '/'))
+	incrementCounter(CreateHookKey(VK_LSHIFT, invalidRune))
+	incrementCounter(CreateHookKey(VK_RSHIFT, invalidRune))
+	incrementCounter(CreateHookKey(VK_LCONTROL, invalidRune))
+	incrementCounter(CreateHookKey(VK_RCONTROL, invalidRune))
+	incrementCounter(CreateHookKey(VK_OEM_1, ';'))
+	incrementCounter(CreateHookKey(VK_OEM_1, ':', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_OEM_PLUS, '='))
+	incrementCounter(CreateHookKey(VK_OEM_PLUS, '+', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_OEM_COMMA, ','))
+	incrementCounter(CreateHookKey(VK_OEM_COMMA, '<', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_OEM_MINUS, '-'))
+	incrementCounter(CreateHookKey(VK_OEM_MINUS, '_', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_OEM_PERIOD, '.'))
+	incrementCounter(CreateHookKey(VK_OEM_PERIOD, '>', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_OEM_2, '/'))
+	incrementCounter(CreateHookKey(VK_OEM_2, '?', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_OEM_3, '`'))
+	incrementCounter(CreateHookKey(VK_OEM_3, '~', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_OEM_4, '['))
+	incrementCounter(CreateHookKey(VK_OEM_4, '{', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_OEM_5, '\\'))
+	incrementCounter(CreateHookKey(VK_OEM_5, '|', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_OEM_6, ']'))
+	incrementCounter(CreateHookKey(VK_OEM_6, '}', IsShiftNeeded()))
+	incrementCounter(CreateHookKey(VK_OEM_7, '\''))
+	incrementCounter(CreateHookKey(VK_OEM_7, '"', IsShiftNeeded()))
 }

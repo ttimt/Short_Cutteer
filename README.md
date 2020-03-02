@@ -13,7 +13,9 @@
 
 **`Note: And only tested on US keyboard`**
 
-To be filled ...
+To build the exe without terminal popping out, use `-ldflags -H=windowsgui`
+
+Ex: `go build -ldflags -H=windowsgui .` 
 
 To be filled ...
 
