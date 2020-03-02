@@ -78,10 +78,10 @@ var (
 	autoCompleteJustDone bool
 
 	// Store hook keys
-	keys                      []Key
-	keysByKeyCodeWithShift    = make(map[uint16]*Key)
-	keysByKeyCodeWithoutShift = make(map[uint16]*Key)
-	keysByChar                = make(map[rune]*Key)
+	keys                            []Key
+	keysByKeyCodeWithShiftOrCapital = make(map[uint16]*Key)
+	keysByKeyCodeWithoutShift       = make(map[uint16]*Key)
+	keysByChar                      = make(map[rune]*Key)
 )
 
 type webSocketConnection struct {
@@ -161,7 +161,13 @@ func processHook() {
 		isShiftEnabled := getKeyState(shiftKeyState)
 		isCapsEnabled := getKeyState(capsLockState, true)
 
-		char := getKeyByKeyCode(uint16(currentKeyStroke), isShiftEnabled).Char
+		key := getKeyByKeyCode(uint16(currentKeyStroke), isShiftEnabled, isCapsEnabled)
+		var char rune
+		if key == nil {
+			char = invalidRune
+		} else {
+			char = key.Char
+		}
 
 		if isAutoComplete(char) {
 			// Send the auto complete

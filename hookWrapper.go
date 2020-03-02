@@ -16,6 +16,10 @@ func createTagInputs(strToSend string, isShiftEnabled, isCapsEnabled bool) (tagI
 	for _, c := range strToSend {
 		key := getKeyByChar(c)
 
+		if key == nil {
+			continue
+		}
+
 		if key.IsShiftNeeded && !isShiftEnabled || key.IsCapitalLetter && !IsCapitalLetterEnabled(isShiftEnabled, isCapsEnabled) {
 			tagInputs = append(tagInputs, shiftKey.KeyHold())
 		}
@@ -55,7 +59,7 @@ func IsCapitalLetterEnabled(shiftKeyState, capsLockKeyState bool) bool {
 }
 
 // Search through existing hook keys by its key code.
-// Input second parameter as true if shift key enabled.
+// Input first parameter as true if shift key enabled.
 // Input second parameter as true if capital key enabled
 func getKeyByKeyCode(keyCode uint16, modifiers ...bool) *Key {
 	if len(modifiers) > 2 {
@@ -63,17 +67,17 @@ func getKeyByKeyCode(keyCode uint16, modifiers ...bool) *Key {
 	}
 
 	var key *Key
-	// TODO check for caps lock
-	// TODO dont panic if cant find key
-	if len(modifiers) > 0 && (modifiers[0]) {
-		key, _ = keysByKeyCodeWithShift[keyCode]
-	} else {
+
+	if len(modifiers) > 0 && (modifiers[0] || IsCapitalLetterEnabled(modifiers[0], modifiers[1])) {
+		key, _ = keysByKeyCodeWithShiftOrCapital[keyCode]
+	}
+
+	if key == nil || (!IsCapitalLetterEnabled(modifiers[0], modifiers[1]) && 65 <= key.Char && key.Char <= 90) {
 		key, _ = keysByKeyCodeWithoutShift[keyCode]
 	}
 
 	if key == nil {
-		log.Printf("Key code does not exist: %0x", keyCode)
-		panic("")
+		log.Printf("Key code does not exist: 0x%0x", keyCode)
 	}
 
 	return key
@@ -84,7 +88,7 @@ func getKeyByChar(char rune) *Key {
 	key, _ := keysByChar[char]
 
 	if key == nil {
-		panic("Key code does not exist:" + string(char))
+		log.Printf("Key code does not exist: %s", string(char))
 	}
 
 	return key
@@ -104,7 +108,7 @@ func createAllHookKeys() {
 
 		// Update maps
 		if key.IsShiftNeeded || key.IsCapitalLetter {
-			keysByKeyCodeWithShift[key.KeyCode] = &key
+			keysByKeyCodeWithShiftOrCapital[key.KeyCode] = &key
 		} else {
 			keysByKeyCodeWithoutShift[key.KeyCode] = &key
 		}
