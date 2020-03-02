@@ -46,7 +46,7 @@ func receiveHook() {
 		// If keystroke is pressed down
 		if wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN {
 			// Retrieve the keyboard hook struct
-			keyboardHookData := (*TagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam)))
+			keyboardHookData := (*TagKBDLLHOOKSTRUCT)(unsafe.Pointer(uintptr(lParam))) // skipcq: GSC-G103
 
 			// Retrieve current keystroke from keyboard hook struct's vkCode
 			currentKeystroke := rune((*keyboardHookData).VkCode)
@@ -108,7 +108,7 @@ func processHook() {
 			tagInputs := processAutoComplete(char, isShiftEnabled, isCapsEnabled)
 
 			// Send input
-			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0]))) // skipcq: GSC-G103
 			continue
 		}
 
@@ -153,7 +153,7 @@ func readSingleCharacter(char rune, isShiftEnabled, isCapsEnabled bool) {
 		if autoCompleteJustDone {
 			// Send input
 			tagInputs := getKeyByKeyCode(VK_DELETE).KeyPress()
-			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0]))) // skipcq: GSC-G103
 		}
 	case '\r':
 		bufferStr += windowsNewLine
@@ -162,7 +162,7 @@ func readSingleCharacter(char rune, isShiftEnabled, isCapsEnabled bool) {
 		if str, ok := userCommands[bufferStr]; ok {
 			// Send input
 			tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
-			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0]))) // skipcq: GSC-G103
 		}
 
 		bufferStr = ""
@@ -170,10 +170,10 @@ func readSingleCharacter(char rune, isShiftEnabled, isCapsEnabled bool) {
 		if str, ok := userCommands[bufferStr]; ok {
 			// Send input
 			tagInputsBackspace := getKeyByKeyCode(VK_BACK).KeyPress(len(bufferStr) + 1)
-			_, _ = SendInput(uint(len(tagInputsBackspace)), (*LPINPUT)(&tagInputsBackspace[0]), int(unsafe.Sizeof(tagInputsBackspace[0])))
+			_, _ = SendInput(uint(len(tagInputsBackspace)), (*LPINPUT)(&tagInputsBackspace[0]), int(unsafe.Sizeof(tagInputsBackspace[0]))) // skipcq: GSC-G103
 
 			tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
-			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0])))
+			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0]))) // skipcq: GSC-G103
 		}
 
 		bufferStr = ""
