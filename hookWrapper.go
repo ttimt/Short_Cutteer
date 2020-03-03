@@ -7,6 +7,14 @@ import (
 	. "github.com/ttimt/Short_Cutteer/hook/windows"
 )
 
+var (
+	// Store hook keys
+	keys                            []Key
+	keysByKeyCodeWithShiftOrCapital = make(map[uint16]*Key)
+	keysByKeyCodeWithoutShift       = make(map[uint16]*Key)
+	keysByChar                      = make(map[rune]*Key)
+)
+
 // Create []TagInputs that can be used in SendInput() function to send keys that
 // can be represented in string or escape sequences
 func createTagInputs(strToSend string, isShiftEnabled, isCapsEnabled bool) (tagInputs []TagINPUT) {
