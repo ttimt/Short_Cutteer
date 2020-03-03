@@ -5,7 +5,6 @@ import (
 	"log"
 	"unsafe"
 
-	. "github.com/ttimt/Short_Cutteer/hook"
 	. "github.com/ttimt/Short_Cutteer/hook/windows"
 )
 
@@ -20,12 +19,6 @@ var (
 	hhook                  HHOOK
 	autoCompleteJustDone   bool
 	bufferStr              string
-
-	// Store hook keys
-	keys                            []Key
-	keysByKeyCodeWithShiftOrCapital = make(map[uint16]*Key)
-	keysByKeyCodeWithoutShift       = make(map[uint16]*Key)
-	keysByChar                      = make(map[rune]*Key)
 )
 
 // Initialize DLLs and start listening to keyboard hook
@@ -129,16 +122,6 @@ func processHook() {
 
 		autoCompleteJustDone = false
 		fmt.Println("Buffer string:", bufferStr)
-
-		// If left bracket, left bracket, space x2, right bracket, left arrow x2
-		// If first double/single quotes, right quote, left arrow
-		// If after ( or [ (bracket already complete) and enter, enter and left arrow x2? depends on default enter behavior
-		// if after {  } and enter, delete, backspace, left arrow, enter, right arrow, enter x2, left arrow
-		// if command xxx and tab, enter yyy
-		// if command xxx and space, backspace xxx len and enter yyy
-		// If brackets or quotes, just can copy text (mouse + keyboard to detect there is text selected),
-		//      copy, left bracket/quote, space, paste, space, right bracket/quote
-		// If 'shortcut key', copy and format and paste
 	}
 }
 

@@ -12,6 +12,9 @@ type Key struct {
 	IsCapitalLetter bool
 }
 
+// Option type for constructing a key
+type Option func(key *Key)
+
 // Create base tag input keyboard template
 func tagInputKeyboard() TagINPUT {
 	return TagINPUT{
@@ -77,7 +80,7 @@ func (k *Key) KeyRelease() TagINPUT {
 // Remaining parameters are optional, to set isShiftNeeded or isCapitalLetter
 //
 // Ex: CreateHookKey(0x123, 'a', hook.IsShiftNeeded())
-func CreateHookKey(keyCode uint16, char rune, options ...func(*Key)) Key {
+func CreateHookKey(keyCode uint16, char rune, options ...Option) Key {
 	key := Key{
 		KeyCode: keyCode,
 		Char:    char,
@@ -92,14 +95,14 @@ func CreateHookKey(keyCode uint16, char rune, options ...func(*Key)) Key {
 }
 
 // Set is shift needed. Set to false for capital letters
-func IsShiftNeeded() func(*Key) {
+func IsShiftNeeded() Option {
 	return func(k *Key) {
 		k.IsShiftNeeded = true
 	}
 }
 
 // Set is capital letter
-func IsCapitalLetter() func(*Key) {
+func IsCapitalLetter() Option {
 	return func(k *Key) {
 		k.IsCapitalLetter = true
 	}
