@@ -20,35 +20,9 @@ const messageKindCommand = "command";
 const messageOperationWrite = "write";
 const messageOperationDelete = "delete";
 
-let cardsParent = $("#cards-parent");
-let modalUi = $(".ui.modal.add-command-modal");
-let modalForm = $(".ui.modal.add-command-modal #form-modal");
-
-$(".ui.card").hover(
-    function () {
-        $(this).addClass("raised");
-    }, function () {
-        $(this).removeClass("raised");
-    }
-);
-
-$(".ui.transparent.fluid.input").focusin(
-    function () {
-        $(this).children("div").show(100);
-    }
-).focusout(
-    function () {
-        $(this).children("div").hide(100);
-    }
-);
-
-$(".sortable").sortable({
-    placeholder: "card"
-});
-
-$(".add-command").click(function () {
-    $(".ui.modal.add-command-modal").modal("show");
-});
+let cardsParent;
+let modalUi;
+let modalForm;
 
 function submitModalNewCommand(title, description, command, output) {
     // Create new ui card
@@ -102,17 +76,7 @@ function submitModalNewCommand(title, description, command, output) {
     }
 }
 
-modalUi.modal("setting", "transition", "horizontal flip").modal({
-    closable: true,
-    onApprove() {
-        return false;
-    },
-    onShow() {
-        modalForm.form("clear");
-    }
-});
-
-function sendCommand(kind, operation, data) {
+function sendMessage(kind, operation, data) {
     let obj = {
         kind,
         operation,
@@ -130,18 +94,14 @@ function sendNewCommand(title, description, command, output) {
         output
     });
 
-    sendCommand(messageKindCommand, messageOperationWrite, data);
+    sendMessage(messageKindCommand, messageOperationWrite, data);
 }
 
 function sendDeleteCommand(title) {
-    sendCommand(messageKindCommand, messageOperationDelete, title);
+    sendMessage(messageKindCommand, messageOperationDelete, title);
 }
 
-cardsParent.on("click", ".delete", function () {
-    sendDeleteCommand($(this).parents(".ui.card").find(".header input").val());
-    $(this).parents(".ui.card").remove();
-});
-
+// Validate modal of Command menu
 function validateModal(form) {
     // If title empty, return false
     let inputTitle = form.find("input[name ='title']").val();
@@ -159,27 +119,74 @@ function validateModal(form) {
     submitModalNewCommand(inputTitle, inputDescription, inputCommand, inputOutput);
 }
 
-$("#form-modal").submit(function () {
-    validateModal($(this));
+$(document).ready(function () {
+    cardsParent = $("#cards-parent");
+    modalUi = $(".ui.modal.add-command-modal");
+    modalForm = modalUi.find("#form-modal");
 
-    return false;
-});
-
-modalUi.find(".ok").click(function () {
-    validateModal(modalForm);
-});
-
-modalForm.form({
-    on: "blur",
-    inline: false,
-    fields: {
-        title: {
-            identifier: "title",
-            rules: [{
-                type: "empty",
-                prompt: "Please enter a title"
-            }]
+    $(".ui.card").hover(
+        function () {
+            $(this).addClass("raised");
+        }, function () {
+            $(this).removeClass("raised");
         }
-    }
+    );
+
+    $(".ui.transparent.fluid.input").focusin(
+        function () {
+            $(this).children("div").show(100);
+        }
+    ).focusout(
+        function () {
+            $(this).children("div").hide(100);
+        }
+    );
+
+    $(".sortable").sortable({
+        placeholder: "card"
+    });
+
+    $(".add-command").click(function () {
+        modalUi.modal("show");
+    });
+
+    modalUi.modal("setting", "transition", "horizontal flip").modal({
+        closable: true,
+        onApprove() {
+            return false;
+        },
+        onShow() {
+            modalForm.form("clear");
+        }
+    });
+
+    modalUi.find(".ok").click(function () {
+        validateModal(modalForm);
+    });
+
+    modalForm.submit(function () {
+        validateModal($(this));
+
+        return false;
+    });
+
+    modalForm.form({
+        on: "blur",
+        inline: false,
+        fields: {
+            title: {
+                identifier: "title",
+                rules: [{
+                    type: "empty",
+                    prompt: "Please enter a title"
+                }]
+            }
+        }
+    });
+
+    cardsParent.on("click", ".delete", function () {
+        sendDeleteCommand($(this).parents(".ui.card").find(".header input").val());
+        $(this).parents(".ui.card").remove();
+    });
 });
 

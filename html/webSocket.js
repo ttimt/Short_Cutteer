@@ -17,6 +17,7 @@ $(document).ready(function () {
     webSocket.onmessage = function (e) {
         let data = JSON.parse(e.data);
 
+        // Receive message of "Command" kind
         if (data.kind === messageKindCommand) {
             if (data.operation === messageOperationWrite) {
                 data.data.forEach((d) => {
