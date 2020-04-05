@@ -82,6 +82,9 @@ func readAndImportFromDB() {
 		// Continue to the next item in the collection
 		return true
 	})
+
+	// Get all unique user commands length
+	updateAllCommandLength()
 }
 
 // Write data to the specified collection

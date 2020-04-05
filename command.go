@@ -1,28 +1,21 @@
 package main
 
 import (
-	"fmt"
+	"sort"
 )
 
 var (
 	userCommands     = make(map[string]*Command)
 	maxCommandLen    int
-	maxCommandLength *CommandLength
-	minCommandLength *CommandLength
+	uniqueCommandLen = make(map[int]struct{})
+	sliceCommandLen  []int
 )
 
 type Command struct {
-	Title         string `json:"title"`
-	Description   string `json:"description"`
-	Command       string `json:"command"`
-	Output        string `json:"output"`
-	commandLength *CommandLength
-}
-
-type CommandLength struct {
-	length  int
-	next    *CommandLength
-	command *Command // Parent
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Command     string `json:"command"`
+	Output      string `json:"output"`
 }
 
 func updateUserCommand(c Command) {
@@ -33,14 +26,26 @@ func updateUserCommand(c Command) {
 	}
 }
 
-func updateCommandLength() {
+func updateAllCommandLength() {
 	commands := getAllCommands()
 
-	// Process
-	fmt.Println(commands)
+	for _, v := range commands {
+		updateCommandLength(v.Command)
+	}
+
+	sort.Ints(sliceCommandLen)
 }
 
-func getAllCommands() *[]Command {
+func updateCommandLength(command string) {
+	commandLength := len(command)
+
+	if _, ok := uniqueCommandLen[commandLength]; !ok {
+		sliceCommandLen = append(sliceCommandLen, commandLength)
+		uniqueCommandLen[commandLength] = struct{}{}
+	}
+}
+
+func getAllCommands() []Command {
 	commands := make([]Command, len(userCommands))
 
 	i := 0
@@ -49,5 +54,5 @@ func getAllCommands() *[]Command {
 		i++
 	}
 
-	return &commands
+	return commands
 }
