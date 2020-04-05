@@ -59,16 +59,18 @@ func processInterrupted() {
 	log.Println("Removing Windows hook ......")
 	_, _ = UnhookWindowsHookEx(hhook)
 
-	// Quit system tray
-	log.Println("Removing sytem tray ......")
-	systray.Quit()
-
 	// Close db
+	log.Println("Closing database ......")
 	err := myDB.Close()
 	if err != nil {
 		panic(err)
 	}
 
-	// Exit
+	// Quit system tray
+	log.Println("Removing sytem tray ......")
+	systray.Quit()
+	log.Println("Exit completed!")
+
+	// Exit - as process interrupt not exiting
 	os.Exit(1)
 }
