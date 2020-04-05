@@ -1,4 +1,5 @@
 /* global submitModalNewCommand */
+/* global escapeHTMLcharacters */
 /* global messageKindCommand */
 /* global messageOperationWrite */
 
@@ -21,7 +22,7 @@ $(document).ready(function () {
         if (data.kind === messageKindCommand) {
             if (data.operation === messageOperationWrite) {
                 data.data.forEach((d) => {
-                    submitModalNewCommand(d.title, d.description, d.command, d.output);
+                    submitModalNewCommand(escapeHTMLcharacters(d.title), escapeHTMLcharacters(d.description), escapeHTMLcharacters(d.command), escapeHTMLcharacters(d.output));
                 });
             }
         }
