@@ -125,7 +125,7 @@ func processHook() {
 	}
 }
 
-// Read single character and update buffer
+// Read single character and update buffer, for ending key like tab or enter
 func readSingleCharacter(char rune, isShiftEnabled, isCapsEnabled bool) {
 	switch char {
 	case '\b':
@@ -142,21 +142,20 @@ func readSingleCharacter(char rune, isShiftEnabled, isCapsEnabled bool) {
 		bufferStr += windowsNewLine
 		bufferStr = ""
 	case '\t':
-		if str, ok := userCommands[bufferStr]; ok {
+		if ok, command := hasValidCommand(); ok {
 			// Send input
-			tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
-			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0]))) // skipcq: GSC-G103
+			sendInput(createTagInputs(command.Output, isShiftEnabled, isCapsEnabled))
 		}
 
 		bufferStr = ""
 	case ' ':
-		if str, ok := userCommands[bufferStr]; ok {
+		if ok, command := hasValidCommand(); ok {
 			// Send input
-			tagInputsBackspace := getKeyByKeyCode(VK_BACK).KeyPress(len(bufferStr) + 1)
+			fmt.Println(len(bufferStr) - len(command.Command))
+			tagInputsBackspace := getKeyByKeyCode(VK_BACK).KeyPress(len(command.Command) + 1)
 			_, _ = SendInput(uint(len(tagInputsBackspace)), (*LPINPUT)(&tagInputsBackspace[0]), int(unsafe.Sizeof(tagInputsBackspace[0]))) // skipcq: GSC-G103
 
-			tagInputs := createTagInputs(str.Output, isShiftEnabled, isCapsEnabled)
-			_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0]))) // skipcq: GSC-G103
+			sendInput(createTagInputs(command.Output, isShiftEnabled, isCapsEnabled))
 		}
 
 		bufferStr = ""
@@ -168,4 +167,24 @@ func readSingleCharacter(char rune, isShiftEnabled, isCapsEnabled bool) {
 
 		bufferStr += string(char)
 	}
+}
+
+func sendInput(tagInputs []TagINPUT) {
+	_, _ = SendInput(uint(len(tagInputs)), (*LPINPUT)(&tagInputs[0]), int(unsafe.Sizeof(tagInputs[0]))) // skipcq: GSC-G103
+}
+
+func hasValidCommand() (bool, *Command) {
+	bufferLen := len(bufferStr)
+
+	for k := range sliceCommandLen {
+		if k > bufferLen {
+			break
+		}
+
+		if command, ok := userCommands[bufferStr[bufferLen-k:]]; ok {
+			return true, command
+		}
+	}
+
+	return false, nil
 }

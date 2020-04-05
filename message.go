@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"sort"
 )
 
 const (
@@ -28,6 +29,8 @@ func processIncomingMessage(m Message) {
 			_ = json.Unmarshal([]byte(dataStr), &c)
 
 			updateUserCommand(c)
+			updateCommandLength(c.Command)
+			sort.Ints(sliceCommandLen)
 			writeCommandToDB(c.Title, c.Description, c.Command, c.Output)
 		case messageOperationDelete:
 			deleteCommandFromDB(dataStr)
