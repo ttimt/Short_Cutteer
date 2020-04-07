@@ -119,6 +119,10 @@ function validateModal(form) {
     submitModalNewCommand(inputTitle, inputDescription, inputCommand, inputOutput);
 }
 
+function escapeHTMLcharacters(input) {
+    return input.replace(/"/g, "&quot;");
+}
+
 $(document).ready(function () {
     cardsParent = $("#cards-parent");
     modalUi = $(".ui.modal.add-command-modal");
