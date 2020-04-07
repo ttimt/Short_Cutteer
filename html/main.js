@@ -120,7 +120,7 @@ function validateModal(form) {
 }
 
 function escapeHTMLcharacters(input) {
-    return input.replace(/"/g, '&quot;');
+    return input.replace(/"/g, "&quot;");
 }
 
 $(document).ready(function () {
